@@ -11,6 +11,7 @@ type RootStackParamList = {
     // Add other screens here
 };
 
+//hii
 const Navbar = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
