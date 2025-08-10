@@ -67,6 +67,7 @@ export default function RootLayout() {
         }} />
       </Stack>
       <StatusBar style="dark" />
+      
     </AuthProvider>
   );
 }

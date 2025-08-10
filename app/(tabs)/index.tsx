@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { Star, Clock, MapPin, Phone, Mail, ChevronRight } from 'lucide-react-native';
+import { Star, Clock, MapPin, Phone, Mail, ChevronRight, ChevronDown } from 'lucide-react-native';
 import Header from '@/components/layout/Header';
 import AnimatedButton from '@/components/ui/AnimatedButton';
 import Colors from '@/constants/Colors';
@@ -10,16 +10,35 @@ import { fetchHospitalDetails } from '@/services/hospital';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userData } = useAuth();
   const [hospital, setHospital] = useState(fetchHospitalDetails());
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
 
   const handleGiveFeedback = () => {
-    if (isAuthenticated) {
+    // Check if user is admin or authority (department head)
+    if (isAuthenticated && userData) {
+      if (userData.role === 'super_admin' || userData.isAuthority) {
+        Alert.alert(
+          "Access Restricted", 
+          "Admins and department heads cannot submit feedback.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
       router.push('/feedback');
-    } else {
+    } else if (!isAuthenticated) {
       router.push('/login');
     }
   };
+
+  // Get departments to display based on showAllDepartments state
+  const displayedDepartments = showAllDepartments 
+    ? hospital.departments 
+    : hospital.departments.slice(0, 4);
+
+  // Check if feedback button should be disabled
+  const isFeedbackDisabled = isAuthenticated && userData && 
+    (userData.role === 'super_admin' || userData.isAuthority);
 
   return (
     <View style={styles.container}>
@@ -79,20 +98,50 @@ export default function HomeScreen() {
             ))}
           </View>
           
-          <TouchableOpacity 
-            style={styles.departmentRow}
-            onPress={() => {/* Navigate to departments */}}
-          >
-            <Text style={styles.sectionTitle}>Departments</Text>
-            <ChevronRight size={20} color={Colors.gray[400]} />
-          </TouchableOpacity>
+          <View style={styles.departmentSection}>
+            <View style={styles.departmentHeader}>
+              <Text style={styles.sectionTitle}>Departments</Text>
+              <TouchableOpacity 
+                onPress={() => setShowAllDepartments(!showAllDepartments)}
+                style={styles.seeAllButton}
+              >
+                <Text style={styles.seeAllText}>
+                  {showAllDepartments ? 'Show Less' : 'See All'}
+                </Text>
+                {showAllDepartments 
+                  ? <ChevronDown size={18} color={Colors.primary} /> 
+                  : <ChevronRight size={18} color={Colors.primary} />
+                }
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.departmentsGrid}>
+              {displayedDepartments.map((department) => (
+                <View key={department.id} style={styles.departmentCard}>
+                  <Text style={styles.departmentName}>{department.name}</Text>
+                  <Text style={styles.departmentDescription}>
+                    {department.description}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
           
           <View style={styles.buttonContainer}>
             <AnimatedButton 
               title="Give Feedback" 
               onPress={handleGiveFeedback} 
-              style={styles.feedbackButton}
+              style={[
+                styles.feedbackButton,
+                isFeedbackDisabled && styles.disabledButton
+              ]}
+              disabled={!!isFeedbackDisabled}
             />
+            {isFeedbackDisabled && (
+              <Text style={styles.disabledText}>
+                Admins and department heads cannot submit feedback
+              </Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -195,12 +244,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.text.primary,
   },
-  departmentRow: {
+  departmentSection: {
+    marginBottom: 24,
+  },
+  departmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    marginBottom: 24,
+    marginBottom: 16,
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  seeAllText: {
+    fontFamily: 'Montserrat-Medium',
+    fontSize: 14,
+    color: Colors.primary,
+    marginRight: 4,
+  },
+  departmentsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  departmentCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    width: '48%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    minHeight: 120,
+    justifyContent: 'center',
+  },
+  departmentName: {
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 16,
+    color: Colors.text.primary,
+    marginBottom: 8,
+  },
+  departmentDescription: {
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 13,
+    color: Colors.text.secondary,
+    lineHeight: 18,
   },
   buttonContainer: {
     paddingHorizontal: 16,
@@ -208,5 +300,16 @@ const styles = StyleSheet.create({
   },
   feedbackButton: {
     marginVertical: 8,
+  },
+  disabledButton: {
+    backgroundColor: Colors.gray[300],
+    opacity: 0.7,
+  },
+  disabledText: {
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 12,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: 16,
   },
 });

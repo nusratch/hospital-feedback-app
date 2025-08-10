@@ -43,6 +43,36 @@ const MOCK_HOSPITAL: Hospital = {
       name: 'Pediatrics',
       description: 'Specialized healthcare for children',
     },
+    {
+      id: '5',
+      name: 'Orthopedics',
+      description: 'Treatment for bone and joint disorders',
+    },
+    {
+      id: '6',
+      name: 'Oncology',
+      description: 'Cancer diagnosis and treatment services',
+    },
+    {
+      id: '7',
+      name: 'Obstetrics & Gynecology',
+      description: 'Women\'s health and pregnancy care',
+    },
+    {
+      id: '8',
+      name: 'Dermatology',
+      description: 'Diagnosis and treatment of skin conditions',
+    },
+    {
+      id: '9',
+      name: 'Psychiatry',
+      description: 'Mental health assessment and treatment',
+    },
+    {
+      id: '10',
+      name: 'Radiology',
+      description: 'Diagnostic imaging and interventional procedures',
+    },
   ],
 };
 

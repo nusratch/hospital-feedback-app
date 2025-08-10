@@ -14,9 +14,10 @@ interface AnimatedButtonProps {
   title: string;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
+  disabled?: boolean;
 }
 
-export default function AnimatedButton({ title, onPress, style }: AnimatedButtonProps) {
+export default function AnimatedButton({ title, onPress, style, disabled }: AnimatedButtonProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   
   const handlePressIn = () => {

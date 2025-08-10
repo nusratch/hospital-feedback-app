@@ -1,15 +1,23 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { clearTokens, getTokens, refreshTokens, storeTokens } from '@/utils/storage';
-import { login as loginApi, refreshAccessToken } from '@/services/auth';
-import { User } from '@/types';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { clearTokens, getTokens, storeTokens } from '@/utils/storage';
+import { 
+  GetProfile, 
+  login as loginApi, 
+  refreshAccessToken, 
+  updateUserField
+} from '@/services/auth';
+import { fetchAuthorityRoles, getAuthorityUserByEmail } from '@/services/authorityService';
+import { User, UserRole, AuthorityUser } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email?: string; phone?: string; password: string }) => Promise<void>;
+  login: (credentials: { email?: string; phone?: string; otpVerified?: boolean, user: User }) => Promise<void>;
   logout: () => void;
   updateUserProfile: (userData: Partial<User>) => Promise<void>;
+  requiresOTPVerification: (field: string) => boolean;
+  userData: User | null; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,52 +27,112 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<User | null>(null);
+  const [authorityRoles, setAuthorityRoles] = useState<Record<string, AuthorityUser>>({});
   const [isLoading, setIsLoading] = useState(true);
-  
+  const rolesLoadedRef = useRef(false);
+
+  // Load authority roles from the backend - not dependent on any state
+  const loadAuthorityRoles = async () => {
+    // Only fetch if not already loaded
+    if (rolesLoadedRef.current) {
+      return authorityRoles;
+    }
+    
+    try {
+      const roles = await fetchAuthorityRoles();
+      setAuthorityRoles(roles);
+      rolesLoadedRef.current = true;
+      return roles;
+    } catch (error) {
+      console.error('Failed to load authority roles:', error);
+      return {};
+    }
+  };
+
+  // Check if a user is an authority based on their email
+  const checkIfUserIsAuthority = useCallback((email: string): boolean => {
+    return !!getAuthorityUserByEmail(email, authorityRoles);
+  }, [authorityRoles]);
+
+  // Get user role from email
+  const getUserRoleFromEmail = useCallback((email: string): UserRole | undefined => {
+    const authorityUser = getAuthorityUserByEmail(email, authorityRoles);
+    return authorityUser?.role as UserRole || 'user';
+  }, [authorityRoles]);
+
+  // Initialize auth state
   useEffect(() => {
-    // Check for existing tokens on app start
     const initAuth = async () => {
+      await loadAuthorityRoles();
       const tokens = await getTokens();
+      
       if (tokens) {
         try {
-          // Try to refresh token
           const newTokens = await refreshAccessToken(tokens.refreshToken);
           if (newTokens) {
             await storeTokens(newTokens);
+            const profileData = await GetProfile(newTokens.accessToken);
             
-            // Mock fetching user profile
-            // In a real app, you would fetch the user profile from API
-            setUser({
-              id: '1',
-              name: 'John Doe',
-              email: 'john.doe@example.com',
-              phone: '(123) 456-7890',
-            });
+            if (profileData && profileData.email) {
+              const isAuthority = checkIfUserIsAuthority(profileData.email);
+              const role = getUserRoleFromEmail(profileData.email);
+              
+              const enhancedProfileData = {
+                ...profileData,
+                isAuthority,
+                role
+              };
+              
+              setUserData(enhancedProfileData);
+            }
           } else {
-            // If refresh fails, log out
-            clearTokens();
-            setUser(null);
+            await clearTokens();
+            setUserData(null);
           }
         } catch (error) {
-          // Clear tokens on error
-          clearTokens();
-          setUser(null);
+          console.error('Auth initialization error:', error);
+          await clearTokens();
+          setUserData(null);
         }
       }
       setIsLoading(false);
     };
 
     initAuth();
-  }, []);
+  }, [checkIfUserIsAuthority, getUserRoleFromEmail]);
 
-  const login = async (credentials: { email?: string; phone?: string; password: string }) => {
+  const login = async (credentials: { email?: string; phone?: string; otpVerified?: boolean, user: User }) => {
+    if (!credentials.otpVerified) {
+      throw new Error('OTP verification required');
+    }
+
     setIsLoading(true);
     try {
-      const { user, tokens } = await loginApi(credentials);
-      await storeTokens(tokens);
-      setUser(user);
+      // Ensure we have the latest authority roles
+      const roles = await loadAuthorityRoles();
+      
+      const { user } = await loginApi(credentials);
+      
+      // Set user role and authority status based on email
+      if (user.email) {
+        const authorityUser = getAuthorityUserByEmail(user.email, roles);
+        if (authorityUser) {
+          user.role = authorityUser.role as UserRole;
+          user.isAuthority = true;
+          user.department = authorityUser.department;
+        } else {
+          user.role = 'user';
+          user.isAuthority = false;
+        }
+      }
+      
+      if (user.authToken) {
+        await storeTokens(user.authToken);
+      }
+      setUserData(user);
     } catch (error) {
+      console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -74,25 +142,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     setIsLoading(true);
     await clearTokens();
-    setUser(null);
+    setUserData(null);
     setIsLoading(false);
   };
 
-  const updateUserProfile = async (userData: Partial<User>) => {
-    // In a real app, you would make an API call to update the user profile
-    setUser(prev => prev ? { ...prev, ...userData } : null);
-    return Promise.resolve();
+  const requiresOTPVerification = (field: string): boolean => {
+    return field !== 'name';
+  };
+
+  const updateUserProfile = async (userData: Partial<User>): Promise<void> => {
+    console.log('Updating user profile:', userData);
+    await updateUserField(userData?.uid || '', 'name', userData.name || '', false);
+    
+    let updatedUserData = { ...userData };
+    if (userData.email) {
+      updatedUserData.isAuthority = checkIfUserIsAuthority(userData.email);
+      updatedUserData.role = getUserRoleFromEmail(userData.email);
+    }
+    
+    const updateUser = (userData: Partial<User>): Promise<void> => {
+      return new Promise<void>((resolve) => {
+        setUserData(prev => {
+          const updatedUser = {
+            ...prev!,
+            ...userData
+          };
+          // Resolve the promise after the state is updated
+          Promise.resolve().then(resolve);
+          return updatedUser;
+        });
+      });
+    };
+
+    await updateUser(updatedUserData);
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        isAuthenticated: !!user,
+        user: userData,
+        isAuthenticated: !!userData,
         isLoading,
         login,
         logout,
         updateUserProfile,
+        requiresOTPVerification,
+        userData,
       }}
     >
       {children}

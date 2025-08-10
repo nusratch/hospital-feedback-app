@@ -1,27 +1,37 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, ShieldCheck } from 'lucide-react-native';
 import Button from '@/components/ui/Button';
 import Colors from '@/constants/Colors';
-import { verifyOTP } from '@/services/auth';
+import { verifyOTP, sendOTP } from '@/services/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const { method, value } = useLocalSearchParams<{ method: string; value: string }>();
-  
+  const { login, updateUserProfile } = useAuth();
+  const { method, value, isLogin, fieldToUpdate, loginType } =
+    useLocalSearchParams<{
+      method: string;
+      value: string;
+      isLogin: string;
+      fieldToUpdate?: string;
+      currentValue?: string;
+      loginType?: string;
+    }>();
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [timeLeft, setTimeLeft] = useState(60);
-  
+
   const inputRefs = useRef<Array<TextInput | null>>([]);
-  
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, []);
 
@@ -29,16 +39,16 @@ export default function VerifyOTPScreen() {
     if (method === 'email') {
       const [username, domain] = value.split('@');
       if (!username || !domain) return value;
-      
-      const hiddenUsername = username.substring(0, 2) + 
-        '*'.repeat(username.length - 4) + 
+
+      const hiddenUsername = username.substring(0, 2) +
+        '*'.repeat(username.length - 4) +
         username.substring(username.length - 2);
-      
+
       return `${hiddenUsername}@${domain}`;
     } else {
       // Phone
-      return value.substring(0, 3) + 
-        '*'.repeat(value.length - 7) + 
+      return value.substring(0, 3) +
+        '*'.repeat(value.length - 7) +
         value.substring(value.length - 4);
     }
   };
@@ -47,11 +57,11 @@ export default function VerifyOTPScreen() {
     if (text.length > 1) {
       text = text[0];
     }
-    
+
     const newOtp = [...otp];
     newOtp[index] = text;
     setOtp(newOtp);
-    
+
     // Auto-focus next input
     if (text && index < 5) {
       inputRefs.current[index + 1]?.focus();
@@ -64,10 +74,18 @@ export default function VerifyOTPScreen() {
     }
   };
 
-  const resendOTP = () => {
-    // Mock resend OTP
+  const resendOTP = async () => {
     setTimeLeft(60);
     setError('');
+
+    try {
+      await sendOTP(
+        method === 'email' ? value : undefined,
+        method === 'phone' ? value : undefined
+      );
+    } catch (error) {
+      setError('Failed to resend OTP. Please try again.');
+    }
   };
 
   const handleVerify = async () => {
@@ -76,23 +94,52 @@ export default function VerifyOTPScreen() {
       setError('Please enter the complete OTP');
       return;
     }
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
-      // Mock API call with artificial delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const isVerified = await verifyOTP(method === 'email' ? value : undefined, method === 'phone' ? value : undefined, otpValue);
-      
-      if (isVerified) {
-        router.push('/user-profile');
+      // Pass the loginType to the verifyOTP function
+      const { verified, user }: any = await verifyOTP(
+        method === 'email' ? value : undefined,
+        method === 'phone' ? value : undefined,
+        otpValue,
+        loginType || 'regular'
+      );
+
+      console.log('isVerified', verified);
+
+      if (verified) {
+        if (isLogin === 'true') {
+          // Handle login
+          await login({
+            otpVerified: true,
+            user: user
+          });
+          
+          // Redirect based on user role
+          if (user.isAuthority) {
+            router.replace('/(tabs)/authority-dashboard');
+          } else if (user.isSuperAdmin) {
+            router.replace('/(tabs)/admin-dashboard');
+          } else {
+            router.replace('/(tabs)');
+          }
+        } else if (fieldToUpdate) {
+          // Handle profile update
+          await updateUserProfile({
+            [fieldToUpdate]: value
+          });
+          router.replace('/user-profile');
+        } else {
+          router.replace('/(tabs)');
+        }
       } else {
         setError('Invalid OTP. Please try again.');
       }
     } catch (error) {
       setError('Verification failed. Please try again.');
+      console.error('Verification error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -114,20 +161,30 @@ export default function VerifyOTPScreen() {
           </TouchableOpacity>
           <Text style={styles.title}>Verify OTP</Text>
         </View>
-        
+
         <View style={styles.content}>
+          {/* Login Type Indicator */}
+          {loginType === 'authority' && (
+            <View style={styles.loginTypeContainer}>
+              <ShieldCheck size={24} color={Colors.primary} />
+              <Text style={styles.loginTypeText}>Authority Login</Text>
+            </View>
+          )}
+          
           <Text style={styles.description}>
-            Enter the 6-digit code sent to your {method}:
+            {isLogin === 'true'
+              ? 'Enter the 6-digit code sent to your'
+              : `Enter the 6-digit code sent to verify your new`} {method}:
           </Text>
           <Text style={styles.identifier}>{formatIdentifier()}</Text>
-          
+
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          
+
           <View style={styles.otpContainer}>
             {otp.map((digit, index) => (
               <TextInput
                 key={index}
-                ref={(ref) => (inputRefs.current[index] = ref)}
+                ref={(ref) => { inputRefs.current[index] = ref; }}
                 style={styles.otpInput}
                 value={digit}
                 onChangeText={(text) => handleOtpChange(text, index)}
@@ -138,14 +195,14 @@ export default function VerifyOTPScreen() {
               />
             ))}
           </View>
-          
+
           <Button
             title="Verify"
             onPress={handleVerify}
             loading={isLoading}
             style={styles.verifyButton}
           />
-          
+
           <View style={styles.resendContainer}>
             <Text style={styles.resendText}>Didn't receive the code? </Text>
             {timeLeft > 0 ? (
@@ -196,6 +253,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 40,
     alignItems: 'center',
+  },
+  loginTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.gray[200],
+    alignSelf: 'center',
+  },
+  loginTypeText: {
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 16,
+    color: Colors.text.primary,
+    marginLeft: 12,
   },
   description: {
     fontFamily: 'Montserrat-Regular',

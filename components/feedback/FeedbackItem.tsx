@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Star, Check, Clock } from 'lucide-react-native';
+import { Star, Check, Clock, AlertCircle, CheckCircle2 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { FeedbackStatus } from '@/types';
 
@@ -14,6 +14,39 @@ interface FeedbackItemProps {
 }
 
 export default function FeedbackItem({ feedback }: FeedbackItemProps) {
+  // Helper function to get status icon and color
+  const getStatusInfo = (status: FeedbackStatus) => {
+    switch (status) {
+      case 'completed':
+        return {
+          icon: <Check size={12} color="white" />,
+          color: Colors.success,
+          text: 'Completed'
+        };
+      case 'in-progress':
+        return {
+          icon: <Clock size={12} color="white" />,
+          color: Colors.warning,
+          text: 'In Progress'
+        };
+      case 'reviewed':
+        return {
+          icon: <CheckCircle2 size={12} color="white" />,
+          color: Colors.primary,
+          text: 'Reviewed'
+        };
+      case 'submitted':
+      default:
+        return {
+          icon: <AlertCircle size={12} color="white" />,
+          color: Colors.text.secondary,
+          text: 'Submitted'
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo(feedback.status);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -21,18 +54,12 @@ export default function FeedbackItem({ feedback }: FeedbackItemProps) {
         <View
           style={[
             styles.statusBadge,
-            feedback.status === 'completed'
-              ? styles.completedBadge
-              : styles.inProgressBadge,
+            { backgroundColor: statusInfo.color }
           ]}
         >
-          {feedback.status === 'completed' ? (
-            <Check size={12} color="white" />
-          ) : (
-            <Clock size={12} color="white" />
-          )}
+          {statusInfo.icon}
           <Text style={styles.statusText}>
-            {feedback.status === 'completed' ? 'Completed' : 'In Progress'}
+            {statusInfo.text}
           </Text>
         </View>
       </View>
@@ -78,12 +105,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
-  },
-  completedBadge: {
-    backgroundColor: Colors.success,
-  },
-  inProgressBadge: {
-    backgroundColor: Colors.warning,
   },
   statusText: {
     fontFamily: 'Montserrat-Medium',

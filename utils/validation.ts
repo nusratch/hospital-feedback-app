@@ -16,7 +16,7 @@ export const validateName = (name: string): boolean => {
 };
 
 export const validateHospitalToken = (token: string): boolean => {
-  // Validate that token is 6 alphanumeric characters
+  // Validate that token is exactly 6 alphanumeric characters
   const regex = /^[a-zA-Z0-9]{6}$/;
   return regex.test(token);
-};
+}

@@ -1,26 +1,58 @@
-import { TextInput, View, Text, StyleSheet, StyleProp, ViewStyle, TextInputProps } from 'react-native';
+import { 
+  TextInput, 
+  View, 
+  Text, 
+  StyleSheet, 
+  StyleProp, 
+  ViewStyle, 
+  TextInputProps, 
+  TextStyle,
+} from 'react-native';
 import Colors from '@/constants/Colors';
+import { ReactNode } from 'react';
 
-interface InputProps extends TextInputProps {
+type InputStyle = StyleProp<TextStyle & ViewStyle>;
+
+interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
   error?: string;
-  style?: StyleProp<ViewStyle>;
+  style?: InputStyle;
+  containerStyle?: StyleProp<ViewStyle>;
+  leftIcon?: ReactNode;
+  inputContainerStyle?: StyleProp<ViewStyle>;
 }
 
-export default function Input({ label, error, style, ...props }: InputProps) {
+export default function Input({ 
+  label, 
+  error, 
+  style, 
+  containerStyle, 
+  leftIcon,
+  inputContainerStyle,
+  ...props 
+}: InputProps) {
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
       
-      <TextInput
-        style={[
-          styles.input,
-          error ? styles.inputError : {},
-          props.multiline ? styles.multilineInput : {},
-        ]}
-        placeholderTextColor={Colors.gray[400]}
-        {...props}
-      />
+      <View style={[styles.inputContainer, inputContainerStyle]}>
+        {leftIcon && (
+          <View style={styles.leftIconContainer}>
+            {leftIcon}
+          </View>
+        )}
+        <TextInput
+          style={[
+            styles.input,
+            error ? styles.inputError : {},
+            props.multiline ? styles.multilineInput : {},
+            leftIcon ? styles.inputWithLeftIcon : {},
+            style,
+          ]}
+          placeholderTextColor={Colors.gray[400]}
+          {...props}
+        />
+      </View>
       
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
@@ -37,7 +69,18 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     marginBottom: 8,
   },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  leftIconContainer: {
+    position: 'absolute',
+    left: 12,
+    zIndex: 1,
+  },
   input: {
+    flex: 1,
     backgroundColor: 'white',
     height: 48,
     borderRadius: 8,
@@ -47,6 +90,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat-Regular',
     color: Colors.text.primary,
+    // @ts-ignore - userSelect is valid but TypeScript types are incorrect
+    userSelect: 'text',
+  } as any,
+  inputWithLeftIcon: {
+    paddingLeft: 44, // Extra padding to make room for the icon
   },
   inputError: {
     borderColor: Colors.error,

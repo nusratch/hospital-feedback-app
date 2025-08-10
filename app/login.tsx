@@ -1,27 +1,26 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, ShieldCheck } from 'lucide-react-native';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { validateEmail, validatePhone } from '@/utils/validation';
 import Colors from '@/constants/Colors';
+import { sendOTP } from '@/services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
-  
+
   const [isEmailLogin, setIsEmailLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthorityLogin, setIsAuthorityLogin] = useState(false);
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
-    
+    const newErrors: { [key: string]: string } = {};
+
     if (isEmailLogin) {
       if (!email) newErrors.email = 'Email is required';
       else if (!validateEmail(email)) newErrors.email = 'Invalid email format';
@@ -29,24 +28,44 @@ export default function LoginScreen() {
       if (!phone) newErrors.phone = 'Phone number is required';
       else if (!validatePhone(phone)) newErrors.phone = 'Invalid phone number';
     }
-    
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = async () => {
+  const handleSendOTP = async () => {
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
+    setErrors({});
+
     try {
-      await login(isEmailLogin ? { email, password } : { phone, password });
-      router.replace('/(tabs)');
+      // Use different API endpoint based on login type
+      const response = await sendOTP(
+        isEmailLogin ? email : undefined,
+        !isEmailLogin ? phone : undefined,
+        isAuthorityLogin ? 'authority' : 'regular'
+      );
+
+      if (response.success) {
+        router.push({
+          pathname: '/verify-otp',
+          params: {
+            method: isEmailLogin ? 'email' : 'phone',
+            value: isEmailLogin ? email : phone,
+            isLogin: 'true',
+            loginType: isAuthorityLogin ? 'authority' : 'regular'
+          }
+        });
+      } else {
+        setErrors({
+          [isEmailLogin ? 'email' : 'phone']: response.message || 'Failed to send OTP. Please try again.'
+        });
+      }
     } catch (error) {
-      router.replace('/(tabs)');
-      setErrors({ form: 'Invalid credentials. Please try again.' });
+      setErrors({
+        [isEmailLogin ? 'email' : 'phone']: 'An error occurred. Please try again.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +82,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
-      <ScrollView 
+      <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -71,31 +90,30 @@ export default function LoginScreen() {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => router.replace('/')}
           >
             <ChevronLeft size={24} color={Colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.title}>Log In</Text>
         </View>
-        
+
         <View style={styles.formContainer}>
-          <View style={styles.segmentContainer}>
-            <TouchableOpacity
-              style={[
-                styles.segmentButton,
-                isEmailLogin ? styles.segmentActive : {}
-              ]}
-              onPress={() => setIsEmailLogin(true)}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  isEmailLogin ? styles.segmentTextActive : {}
-                ]}
-              >
-                Email
+          {/* Authority Login Toggle */}
+          <View style={styles.authorityToggleContainer}>
+            <View style={styles.toggleLabelContainer}>
+              <ShieldCheck size={20} color={isAuthorityLogin ? Colors.primary : Colors.text.secondary} />
+              <Text style={[styles.toggleLabel, isAuthorityLogin && styles.toggleLabelActive]}>
+                Authority Login
               </Text>
-            </TouchableOpacity>
+            </View>
+            <Switch
+              value={isAuthorityLogin}
+              onValueChange={setIsAuthorityLogin}
+              trackColor={{ false: Colors.gray[200], true: Colors.primary }}
+              thumbColor={Colors.background}
+            />
+          </View>
+          <View style={styles.segmentContainer}>
             <TouchableOpacity
               style={[
                 styles.segmentButton,
@@ -112,12 +130,28 @@ export default function LoginScreen() {
                 Phone
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.segmentButton,
+                isEmailLogin ? styles.segmentActive : {}
+              ]}
+              onPress={() => setIsEmailLogin(true)}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  isEmailLogin ? styles.segmentTextActive : {}
+                ]}
+              >
+                Email
+              </Text>
+            </TouchableOpacity>
           </View>
-          
+
           {errors.form && (
             <Text style={styles.errorText}>{errors.form}</Text>
           )}
-          
+
           {isEmailLogin ? (
             <Input
               label="Email"
@@ -138,32 +172,22 @@ export default function LoginScreen() {
               error={errors.phone}
             />
           )}
-          
-          <Input
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Enter your password"
-            secureTextEntry
-            error={errors.password}
-          />
-          
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-          
+
+          <Text style={styles.otpInfo}>
+            We'll send you a one-time password to verify your identity
+          </Text>
+
           <Button
-            title="Log In"
-            onPress={handleLogin}
+            title="Get OTP"
+            onPress={handleSendOTP}
             loading={isLoading}
             style={styles.loginButton}
           />
-          
-          <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace('/register')}>
-              <Text style={styles.registerLink}>Register</Text>
-            </TouchableOpacity>
+
+          <View style={styles.noteContainer}>
+            <Text style={styles.noteText}>
+              By continuing, you agree to our Terms of Service and Privacy Policy
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -206,7 +230,31 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 40,
+  },
+  authorityToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.gray[200],
+  },
+  toggleLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toggleLabel: {
+    fontFamily: 'Montserrat-Medium',
+    fontSize: 16,
+    color: Colors.text.secondary,
+    marginLeft: 8,
+  },
+  toggleLabelActive: {
+    color: Colors.primary,
   },
   segmentContainer: {
     flexDirection: 'row',
@@ -237,32 +285,23 @@ const styles = StyleSheet.create({
     color: Colors.error,
     marginBottom: 16,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    fontFamily: 'Montserrat-Medium',
+  otpInfo: {
+    fontFamily: 'Montserrat-Regular',
     fontSize: 14,
-    color: Colors.primary,
+    color: Colors.text.secondary,
+    marginTop: 12,
+    marginBottom: 24,
   },
   loginButton: {
     marginBottom: 24,
   },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 8,
+  noteContainer: {
+    marginTop: 16,
   },
-  registerText: {
+  noteText: {
     fontFamily: 'Montserrat-Regular',
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.text.secondary,
-  },
-  registerLink: {
-    fontFamily: 'Montserrat-SemiBold',
-    fontSize: 14,
-    color: Colors.primary,
+    textAlign: 'center',
   },
 });

@@ -1,14 +1,16 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import Colors from '@/constants/Colors';
 
 interface AvatarProps {
   size: number;
   name: string;
-  imageUrl?: string;
+  source?: ImageSourcePropType;
+  imageUrl?: string; // For backward compatibility
 }
 
-export default function Avatar({ size, name, imageUrl }: AvatarProps) {
+export default function Avatar({ size, name, source, imageUrl }: AvatarProps) {
   const getInitials = (name: string) => {
+    if (!name) return 'U';
     const parts = name.split(' ');
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
@@ -24,11 +26,14 @@ export default function Avatar({ size, name, imageUrl }: AvatarProps) {
     fontSize: size / 2.5,
   };
 
+  // Use source prop if provided, otherwise fall back to imageUrl
+  const imageSource = source || (imageUrl ? { uri: imageUrl } : undefined);
+
   return (
     <View>
-      {imageUrl ? (
+      {imageSource ? (
         <Image 
-          source={{ uri: imageUrl }} 
+          source={imageSource} 
           style={[styles.avatar, avatarStyle]} 
         />
       ) : (
@@ -39,7 +44,7 @@ export default function Avatar({ size, name, imageUrl }: AvatarProps) {
         </View>
       )}
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
