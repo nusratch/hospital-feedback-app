@@ -350,7 +350,7 @@ export default function AdminDashboardScreen() {
     <View style={styles.container}>
       <Header title="Admin Dashboard" />
 
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header Navigation */}
         <View style={styles.headerNavBar}>
           <View style={styles.navRow}>
@@ -637,6 +637,9 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 140,
   },
   profileContainer: {
     margin: 16,
