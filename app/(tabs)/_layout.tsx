@@ -83,6 +83,15 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/** Hidden route for Analytics - navigable via button, not a tab */}
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }

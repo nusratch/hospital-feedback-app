@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Colors from '@/constants/Colors';
 import { useRouter } from 'expo-router';
+import { AnalyticsContent } from './analytics';
 import {
   fetchAuthorityRoles,
   updateAuthorityUser,
@@ -50,6 +51,8 @@ export default function AdminDashboardScreen() {
   const [tokenLoading, setTokenLoading] = useState(false);
   const [tokenMessage, setTokenMessage] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<string | null>(null);
+  // Top navigation state
+  const [activeTab, setActiveTab] = useState<'users' | 'tokens' | 'analytics'>('users');
 
   useEffect(() => {
     loadAuthorityData();
@@ -348,94 +351,32 @@ export default function AdminDashboardScreen() {
       <Header title="Admin Dashboard" />
 
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.profileContainer}>
-          <View style={styles.profileHeader}>
-            <Text style={styles.profileTitle}>Admin Profile</Text>
-            {!isEditingProfile ? (
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => setIsEditingProfile(true)}
-              >
-                <Edit2 size={18} color={Colors.primary} />
-                <Text style={styles.editButtonText}>Edit Profile</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.profileActions}>
-                <TouchableOpacity
-                  style={[styles.profileButton, styles.cancelButton]}
-                  onPress={() => setIsEditingProfile(false)}
-                >
-                  <Text style={[styles.buttonText, { color: Colors.gray[700] }]}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.profileButton, styles.saveButton]}
-                  onPress={handleProfileUpdate}
-                >
-                  <Text style={[styles.buttonText, { color: 'white' }]}>Save Changes</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+        {/* Header Navigation */}
+        <View style={styles.headerNavBar}>
+          <View style={styles.navRow}>
+            <TouchableOpacity
+              onPress={() => setActiveTab('users')}
+              style={[styles.navButton, activeTab === 'users' && styles.navButtonActive]}
+            >
+              <Text style={[styles.navButtonText, activeTab === 'users' && styles.navButtonTextActive]}>User Management</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab('tokens')}
+              style={[styles.navButton, activeTab === 'tokens' && styles.navButtonActive]}
+            >
+              <Text style={[styles.navButtonText, activeTab === 'tokens' && styles.navButtonTextActive]}>Hospital Token</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab('analytics')}
+              style={[styles.navButton, activeTab === 'analytics' && styles.navButtonActive]}
+            >
+              <Text style={[styles.navButtonText, activeTab === 'analytics' && styles.navButtonTextActive]}>Analytics</Text>
+            </TouchableOpacity>
           </View>
-
-          {isEditingProfile ? (
-            <View style={styles.profileForm}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                style={styles.profileInput}
-                value={profileData.name}
-                onChangeText={(text) => setProfileData(prev => ({ ...prev, name: text }))}
-                placeholder="Full Name"
-                editable={isEditingProfile}
-                selectTextOnFocus={isEditingProfile}
-                placeholderTextColor={Colors.gray[400]}
-                autoComplete="name"
-              />
-
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.profileInput}
-                value={profileData.email}
-                onChangeText={(text) => setProfileData(prev => ({ ...prev, email: text }))}
-                placeholder="Email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                editable={isEditingProfile}
-                selectTextOnFocus={isEditingProfile}
-                placeholderTextColor={Colors.gray[400]}
-              />
-
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.profileInput}
-                value={profileData.phone}
-                onChangeText={(text) => setProfileData(prev => ({ ...prev, phone: text }))}
-                placeholder="Phone Number"
-                keyboardType="phone-pad"
-                editable={isEditingProfile}
-                selectTextOnFocus={isEditingProfile}
-                placeholderTextColor={Colors.gray[400]}
-                autoComplete="tel"
-              />
-            </View>
-          ) : (
-            <View style={styles.profileInfo}>
-              <View style={styles.infoRow}>
-                <User size={18} color={Colors.gray[600]} />
-                <Text style={styles.infoText}>{profileData.name}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Mail size={18} color={Colors.gray[600]} />
-                <Text style={styles.infoText}>{profileData.email}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Phone size={18} color={Colors.gray[600]} />
-                <Text style={styles.infoText}>{profileData.phone}</Text>
-              </View>
-            </View>
-          )}
         </View>
 
+        {activeTab === 'users' && (
+        <View>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleContainer}>
             <Text style={styles.sectionTitle}>Department Management</Text>
@@ -601,66 +542,79 @@ export default function AdminDashboardScreen() {
             </View>
           ))}
         </View>
+        </View>
+        )}
 
         {/* Hospital Token Management */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>Hospital Tokens</Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>View, search, and add hospital tokens</Text>
-        </View>
-
-        <View style={styles.tokenSectionContainer}>
-          <Text style={styles.formTitle}>Manage Tokens</Text>
-
-          <TextInput
-            style={[styles.input, { color: Colors.gray[900] }]}
-            placeholder="Search tokens"
-            placeholderTextColor={Colors.gray[400]}
-            value={tokenSearch}
-            onChangeText={setTokenSearch}
-            autoCapitalize="none"
-          />
-
-          <View style={styles.tokenAddRow}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.addButton]}
-              onPress={handleAddToken}
-            >
-              <Text style={styles.actionButtonText}>Generate Token</Text>
-            </TouchableOpacity>
+        {activeTab === 'tokens' && (
+        <View>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Text style={styles.sectionTitle}>Hospital Tokens</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>View, search, and add hospital tokens</Text>
           </View>
 
-          {tokenMessage ? (
-            <Text style={[styles.sectionSubtitle, { color: '#065f46', marginTop: 8 }]}>
-              {tokenMessage}
-            </Text>
-          ) : null}
-          {tokenError ? (
-            <Text style={[styles.sectionSubtitle, { color: Colors.error, marginTop: 8 }]}>
-              {tokenError}
-            </Text>
-          ) : null}
+          <View style={styles.tokenSectionContainer}>
+            <Text style={styles.formTitle}>Manage Tokens</Text>
 
-          <View style={styles.tokenListContainer}>
-            {tokenLoading ? (
-              <Text style={styles.sectionSubtitle}>Loading tokens...</Text>
-            ) : filteredTokens.length === 0 ? (
-              <Text style={styles.emptyText}>No tokens found</Text>
-            ) : (
-              filteredTokens.map((t, idx) => (
-                <View key={`${t.id || t.token}-${idx}`} style={styles.authorityItem}>
-                  <View style={styles.authorityInfo}>
-                    <Text style={styles.roleName}>{t.token}</Text>
-                    {t.createdAt ? (
-                      <Text style={styles.emailText}>Created: {t.createdAt}</Text>
-                    ) : null}
+            <TextInput
+              style={[styles.input, { color: Colors.gray[900] }]}
+              placeholder="Search tokens"
+              placeholderTextColor={Colors.gray[400]}
+              value={tokenSearch}
+              onChangeText={setTokenSearch}
+              autoCapitalize="none"
+            />
+
+            <View style={styles.tokenAddRow}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.addButton]}
+                onPress={handleAddToken}
+              >
+                <Text style={styles.actionButtonText}>Generate Token</Text>
+              </TouchableOpacity>
+            </View>
+
+            {tokenMessage ? (
+              <Text style={[styles.sectionSubtitle, { color: '#065f46', marginTop: 8 }]}>
+                {tokenMessage}
+              </Text>
+            ) : null}
+            {tokenError ? (
+              <Text style={[styles.sectionSubtitle, { color: Colors.error, marginTop: 8 }]}>
+                {tokenError}
+              </Text>
+            ) : null}
+
+            <View style={styles.tokenListContainer}>
+              {tokenLoading ? (
+                <Text style={styles.sectionSubtitle}>Loading tokens...</Text>
+              ) : filteredTokens.length === 0 ? (
+                <Text style={styles.emptyText}>No tokens found</Text>
+              ) : (
+                filteredTokens.map((t, idx) => (
+                  <View key={`${t.id || t.token}-${idx}`} style={styles.authorityItem}>
+                    <View style={styles.authorityInfo}>
+                      <Text style={styles.roleName}>{t.token}</Text>
+                      {t.createdAt ? (
+                        <Text style={styles.emailText}>Created: {t.createdAt}</Text>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-              ))
-            )}
+                ))
+              )}
+            </View>
           </View>
         </View>
+        )}
+
+        {/* Analytics */}
+        {activeTab === 'analytics' && (
+          <View>
+            <AnalyticsContent embedded />
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -670,6 +624,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  quickActionsBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   centeredContainer: {
     flex: 1,
@@ -728,6 +686,43 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: Colors.primary,
+  },
+  analyticsButton: {
+    backgroundColor: Colors.primary,
+    alignSelf: 'flex-start',
+  },
+  headerNavBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  navRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  navButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: Colors.gray[200],
+    alignItems: 'center',
+  },
+  navButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  navButtonText: {
+    color: Colors.text.primary,
+    fontWeight: '600',
+  },
+  navButtonTextActive: {
+    color: 'white',
+  },
+  navAnalytics: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   buttonText: {
     fontSize: 14,

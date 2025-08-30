@@ -54,7 +54,7 @@ export const updateAuthorityUser = async (
 ): Promise<AuthorityUser> => {
   try {
     const response = await fetch(`${API_BASE_URL}/authorities/${role}`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
