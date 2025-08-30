@@ -14,6 +14,7 @@ interface User {
   isAuthority?: boolean;
   department?: string;
   isSuperAdmin?: boolean; // Flag to identify super admin
+  profilePicture?: string;
 }
 
 // Authentication related types

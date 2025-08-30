@@ -21,10 +21,10 @@ export const login = async (credentials: { email?: string; phone?: string; otpVe
   return {
     user: {
       uid: credentials.user.uid,
-      name: isNewUser ? 'New User' : 'John Doe',
+      name: isNewUser ? credentials.user.email.split('@')[0] : 'User',
       email: credentials.user.email || '',
       phoneNumber: credentials.user.phoneNumber || '',
-      imageUrl: isNewUser ? undefined : 'https://randomuser.me/api/portraits/men/32.jpg',
+      imageUrl: credentials.user.profilePicture ? credentials.user.profilePicture : undefined,
       authToken: credentials.user.authToken
     }
   };

@@ -73,18 +73,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (newTokens) {
             await storeTokens(newTokens);
             const profileData = await GetProfile(newTokens.accessToken);
-            
-            if (profileData && profileData.email) {
-              const isAuthority = checkIfUserIsAuthority(profileData.email);
-              const role = getUserRoleFromEmail(profileData.email);
-              
-              const enhancedProfileData = {
-                ...profileData,
-                isAuthority,
-                role
-              };
-              
-              setUserData(enhancedProfileData);
+            // Set user data even if email is missing to avoid unintended logout UI state
+            if (profileData) {
+              if (profileData.email) {
+                const isAuthority = checkIfUserIsAuthority(profileData.email);
+                const role = getUserRoleFromEmail(profileData.email);
+
+                const enhancedProfileData = {
+                  ...profileData,
+                  isAuthority,
+                  role
+                };
+                setUserData(enhancedProfileData);
+              } else {
+                // No email in profile; still keep the session with the basic profile
+                setUserData(profileData);
+              }
             }
           } else {
             await clearTokens();

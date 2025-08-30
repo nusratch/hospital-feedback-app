@@ -12,12 +12,13 @@ import {
 } from '../../services/authorityService';
 import { Edit2, Save, X, Plus, Trash2, User, Mail, Phone } from 'lucide-react-native';
 import { AuthorityRoleMapping, AuthorityUser } from '@/types';
+import { fetchTokens as fetchHospitalTokens, addToken as addHospitalToken, HospitalToken } from '../../services/tokenService';
 
 // Super admin email - must match the one in authorityRoleMapping in types/index.ts
 const SUPER_ADMIN_EMAIL = 'SUPERADMIN@HOSPITAL.COM';
 
 export default function AdminDashboardScreen() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [authorities, setAuthorities] = useState<{ [key: string]: string }>({});
   const [authorityRoleMapping, setAuthorityRoleMapping] = useState<Record<string, AuthorityUser>>(AuthorityRoleMapping);
@@ -42,14 +43,50 @@ export default function AdminDashboardScreen() {
     phone: '+1234567890'
   });
 
+  // Hospital token states
+  const [tokens, setTokens] = useState<HospitalToken[]>([]);
+  const [filteredTokens, setFilteredTokens] = useState<HospitalToken[]>([]);
+  const [tokenSearch, setTokenSearch] = useState('');
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenMessage, setTokenMessage] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
   useEffect(() => {
     loadAuthorityData();
+  }, []);
+
+  useEffect(() => {
+    loadTokens();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadAuthorityData();
     setRefreshing(false);
+  };
+
+  const handleAddToken = async () => {
+    try {
+      const res = await addHospitalToken(undefined, user?.uid);
+      if (res.ok) {
+        await loadTokens();
+        const msg = res.message || 'Token generated successfully';
+        const tokenText = res.token?.token ? `\nToken: ${res.token.token}` : '';
+        Alert.alert('Success', `${msg}${tokenText}`);
+        setTokenError(null);
+        setTokenMessage(`${msg}${res.token?.token ? ` (Token: ${res.token.token})` : ''}`);
+      } else {
+        const errMsg = res.message || 'Failed to generate token';
+        Alert.alert('Error', errMsg);
+        setTokenMessage(null);
+        setTokenError(errMsg);
+      }
+    } catch (e) {
+      console.error('Error generating token:', e);
+      Alert.alert('Error', 'Failed to generate token');
+      setTokenMessage(null);
+      setTokenError('Failed to generate token');
+    }
   };
 
   const handleEditRole = (role: string) => {
@@ -149,6 +186,29 @@ export default function AdminDashboardScreen() {
     }
   };
 
+  const loadTokens = async () => {
+    try {
+      setTokenLoading(true);
+      const list = await fetchHospitalTokens();
+      setTokens(list);
+      setFilteredTokens(list);
+    } catch (e) {
+      console.error('Error loading tokens:', e);
+      Alert.alert('Error', 'Failed to load hospital tokens');
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const q = tokenSearch.trim().toLowerCase();
+    if (!q) {
+      setFilteredTokens(tokens);
+    } else {
+      setFilteredTokens(tokens.filter(t => (t.token || '').toLowerCase().includes(q)));
+    }
+  }, [tokenSearch, tokens]);
+
   const handleAddDepartment = async () => {
     if (!newDepartment.trim() || !headName.trim() || !headEmail.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -235,14 +295,26 @@ export default function AdminDashboardScreen() {
       .replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  // Redirect to login if not authenticated
+  // While auth is initializing, avoid redirecting
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Header title="Admin Dashboard" />
+        <View style={styles.centeredContainer}>
+          <Text style={styles.messageText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Redirect to login if not authenticated (after loading completes)
   if (!isAuthenticated) {
     router.replace('/login');
     return null;
   }
 
-  // Redirect to home if not super admin
-  if (user?.role !== "super_admin") {
+  // Redirect to home if not super admin (after loading completes)
+  if (!isLoading && user?.role !== "super_admin") {
     router.replace('/(tabs)');
     return null;
   }
@@ -529,6 +601,66 @@ export default function AdminDashboardScreen() {
             </View>
           ))}
         </View>
+
+        {/* Hospital Token Management */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>Hospital Tokens</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>View, search, and add hospital tokens</Text>
+        </View>
+
+        <View style={styles.tokenSectionContainer}>
+          <Text style={styles.formTitle}>Manage Tokens</Text>
+
+          <TextInput
+            style={[styles.input, { color: Colors.gray[900] }]}
+            placeholder="Search tokens"
+            placeholderTextColor={Colors.gray[400]}
+            value={tokenSearch}
+            onChangeText={setTokenSearch}
+            autoCapitalize="none"
+          />
+
+          <View style={styles.tokenAddRow}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.addButton]}
+              onPress={handleAddToken}
+            >
+              <Text style={styles.actionButtonText}>Generate Token</Text>
+            </TouchableOpacity>
+          </View>
+
+          {tokenMessage ? (
+            <Text style={[styles.sectionSubtitle, { color: '#065f46', marginTop: 8 }]}>
+              {tokenMessage}
+            </Text>
+          ) : null}
+          {tokenError ? (
+            <Text style={[styles.sectionSubtitle, { color: Colors.error, marginTop: 8 }]}>
+              {tokenError}
+            </Text>
+          ) : null}
+
+          <View style={styles.tokenListContainer}>
+            {tokenLoading ? (
+              <Text style={styles.sectionSubtitle}>Loading tokens...</Text>
+            ) : filteredTokens.length === 0 ? (
+              <Text style={styles.emptyText}>No tokens found</Text>
+            ) : (
+              filteredTokens.map((t, idx) => (
+                <View key={`${t.id || t.token}-${idx}`} style={styles.authorityItem}>
+                  <View style={styles.authorityInfo}>
+                    <Text style={styles.roleName}>{t.token}</Text>
+                    {t.createdAt ? (
+                      <Text style={styles.emailText}>Created: {t.createdAt}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -538,6 +670,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  centeredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
   },
   scrollContainer: {
     flex: 1,
@@ -635,6 +773,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'white',
     opacity: 0.9,
+  },
+  messageText: {
+    fontSize: 14,
+    color: Colors.text.primary,
+    marginBottom: 8,
   },
   sectionHeader: {
     padding: 16,
@@ -740,6 +883,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 100,
   } as ViewStyle,
+  tokenSectionContainer: {
+    margin: 16,
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.gray[100],
+  } as ViewStyle,
+  tokenAddRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  } as ViewStyle,
+  tokenListContainer: {
+    marginTop: 8,
+  } as ViewStyle,
+  emptyText: {
+    fontSize: 14,
+    color: Colors.gray[600],
+    fontStyle: 'italic',
+    textAlign: 'center',
+  } as TextStyle,
   authorityItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',

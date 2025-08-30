@@ -20,7 +20,7 @@ interface AuthorityFeedbackItem {
 }
 
 export default function AuthorityDashboardScreen() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [feedbacks, setFeedbacks] = useState<AuthorityFeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +111,17 @@ export default function AuthorityDashboardScreen() {
         return status;
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Header title="Authority Dashboard" />
+        <View style={styles.centeredContainer}>
+          <Text style={styles.messageText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

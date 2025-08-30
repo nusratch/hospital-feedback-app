@@ -125,11 +125,11 @@ export default function ProfileScreen() {
           <View style={styles.profileHeader}>
             <Avatar 
               size={80} 
-              name={user?.name || 'User'} 
+              name={user?.name || user?.email?.split('@')[0] || 'User'} 
               imageUrl={user?.imageUrl}
             />
             <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{user?.name || 'User'}</Text>
+              <Text style={styles.userName}>{user?.name || user?.email?.split('@')[0] || 'User'}</Text>
               <Text style={styles.userEmail}>{user?.email || ''}</Text>
               <Text style={styles.userPhone}>{user?.phoneNumber || ''}</Text>
               

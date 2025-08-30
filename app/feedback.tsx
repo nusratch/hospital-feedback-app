@@ -34,19 +34,19 @@ const FEEDBACK_QUESTIONS = {
       "questions": [
         { 
           "key": "doctorBehavior", 
-          "text": "How would you rate the quality of care provided by the doctors?",
+          "text": "How would you rate the quality of maternity care provided by the doctors during pregnancy and delivery?",
           "category": "medical_care",
           "weight": 1.2
         },
         { 
           "key": "nursingStaff", 
-          "text": "How would you rate the nursing staff?",
+          "text": "How would you rate the support and care provided by the nursing and midwifery staff?",
           "category": "medical_care",
           "weight": 1.1
         },
         { 
           "key": "medicationAvailability", 
-          "text": "How would you rate the availability of medications?",
+          "text": "How would you rate the availability of maternity-related medications and supplies?",
           "category": "medical_care",
           "weight": 1.0
         }
@@ -59,19 +59,19 @@ const FEEDBACK_QUESTIONS = {
       "questions": [
         { 
           "key": "cleanliness", 
-          "text": "How would you rate the cleanliness of the hospital?",
+          "text": "How would you rate the cleanliness and hygiene of the maternity ward and delivery rooms?",
           "category": "facilities",
           "weight": 1.0
         },
         { 
           "key": "hospitalFacilities", 
-          "text": "How would you rate the equipment and facilities?",
+          "text": "How would you rate the maternity ward facilities, equipment, and delivery-related infrastructure?",
           "category": "facilities",
           "weight": 1.0
         },
         { 
           "key": "foodQuality", 
-          "text": "How would you rate the hospital food quality?",
+          "text": "How would you rate the quality and suitability of meals provided for mothers?",
           "category": "facilities",
           "weight": 0.8
         }
@@ -84,19 +84,19 @@ const FEEDBACK_QUESTIONS = {
       "questions": [
         { 
           "key": "waitingTime", 
-          "text": "How would you rate the waiting time for services?",
+          "text": "How would you rate the waiting time for maternity-related services and check-ups?",
           "category": "service",
           "weight": 1.1
         },
         { 
           "key": "registrationProcess", 
-          "text": "How would you rate the admitting and registration process?",
+          "text": "How would you rate the admitting and registration process for maternity care?",
           "category": "service",
           "weight": 1.0
         },
         { 
           "key": "costOfTreatment", 
-          "text": "How would you rate the cost of treatment?",
+          "text": "How would you rate the cost of maternity care and delivery services?",
           "category": "service",
           "weight": 0.9
         }
@@ -109,7 +109,7 @@ const FEEDBACK_QUESTIONS = {
       "questions": [
         { 
           "key": "overallExperience", 
-          "text": "How would you rate your overall experience?",
+          "text": "How would you rate your overall maternity care experience?",
           "category": "overall",
           "weight": 1.5
         }
@@ -117,6 +117,7 @@ const FEEDBACK_QUESTIONS = {
     }
   ]
 };
+
 
 // Flatten questions for easier access
 const QUESTIONS = FEEDBACK_QUESTIONS.categories.flatMap(category => 
@@ -270,13 +271,30 @@ export default function FeedbackScreen() {
         }
       };
       
-      await submitFeedback(feedbackData);
-      setIsModalVisible(true);
+      const res = await submitFeedback(feedbackData);
+      if (res.ok) {
+        Alert.alert(
+          'Success',
+          res.message || 'Feedback submitted successfully',
+          [{ text: 'OK', style: 'default' }]
+        );
+        setErrors({});
+        setIsModalVisible(true);
+      } else {
+        const msg = res.message || 'Unable to submit feedback. Please try again.';
+        Alert.alert('Submission Failed', msg, [{ text: 'OK', style: 'destructive' }]);
+        const tokenRelated = /token|hospital token|invalid/i.test(msg);
+        setErrors({
+          form: msg,
+          ...(tokenRelated ? { hospitalToken: msg } : {})
+        });
+        return;
+      }
     } catch (error) {
       Alert.alert(
-        "Submission Failed", 
-        "Unable to submit feedback. Please check your connection and try again.",
-        [{ text: "OK", style: "destructive" }]
+        'Submission Failed',
+        'Unable to submit feedback. Please check your connection and try again.',
+        [{ text: 'OK', style: 'destructive' }]
       );
       setErrors({ form: 'Failed to submit feedback. Please try again.' });
     } finally {

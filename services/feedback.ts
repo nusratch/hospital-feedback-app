@@ -50,45 +50,42 @@ export const fetchUserFeedbacks = async (userId: string): Promise<Feedback[]> =>
   }
 };
 
-export const submitFeedback = async (feedback: FeedbackSubmission): Promise<boolean> => {
+export const submitFeedback = async (
+  feedback: FeedbackSubmission
+): Promise<{ ok: boolean; message?: string; id?: string }> => {
   console.log('Submitting feedback:', JSON.stringify(feedback, null, 2));
 
   try {
-    // In a real app, this would be an API call
-    // Example API call:
     const accessToken = JSON.parse(localStorage.getItem('auth_tokens') || '')?.accessToken;
 
     const response = await fetch(`${API_BASE_URL}/feedback/new-feedback`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}` // Assuming token is stored in localStorage
+        'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify(feedback),
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to submit feedback');
+    const data = await safeJson(response);
+    if (!response.ok || data?.success === false) {
+      const message = data?.message || 'Failed to submit feedback';
+      return { ok: false, message };
     }
 
-    // Add the new feedback to the local state with 'submitted' status
-    const newFeedback: Feedback = {
-      id: Date.now().toString(), // Temporary ID until backend assigns one
-      hospitalName: 'City General Hospital', // This would come from the hospital token in a real app
-      averageRating: feedback.ratings.averageRating,
-      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      status: 'submitted'
-    };
-
-    // In a real app, you would update your state management here
-    console.log('New feedback created with submitted status:', newFeedback);
-
-    return true;
+    // Success: return message and maybe created ID if provided
+    const message = data?.message || 'Feedback submitted successfully';
+    const id = data?.id || data?.data?.id;
+    return { ok: true, message, id };
   } catch (error) {
     console.error('Error submitting feedback:', error);
-    throw error;
+    return { ok: false, message: 'Failed to submit feedback' };
   }
 };
+
+async function safeJson(res: Response) {
+  try { return await res.json(); } catch { return null; }
+}
 
 // New function to check feedback status and update it
 export const checkFeedbackStatus = async (feedbackId: string): Promise<string> => {
