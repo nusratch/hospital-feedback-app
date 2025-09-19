@@ -9,27 +9,33 @@ const getDefaultApiUrl = () => {
   // On mobile devices in development, we need to use the local network IP
   // instead of localhost because localhost on a mobile device refers to the device itself
   if (Platform.OS === 'web') {
-    return 'http://localhost:4000';
+    // return 'http://172.26.59.176:4000';
+    return 'https://hospital-feedback-app-backend.vercel.app';
+
   } else {
     // For Expo Go on mobile, we can use the manifest URL to get the development server IP
     // This automatically uses the correct IP address without hardcoding
     try {
       // @ts-ignore - Expo manifest typing
-      const debuggerHost = Constants.manifest2?.extra?.expoGo?.debuggerHost ||
-        // @ts-ignore - For older Expo versions
-        Constants.manifest?.debuggerHost;
-      
+      const debuggerHost = '172.26.59.176';//Constants.manifest2?.extra?.expoGo?.debuggerHost ||
+      // @ts-ignore - For older Expo versions
+      // Constants.manifest?.debuggerHost;
+
       if (debuggerHost) {
         const hostUri = debuggerHost.split(':')[0];
-        return `http://${hostUri}:4000`;
+        // return `http://${hostUri}:4000`;
+        return 'https://hospital-feedback-app-backend.vercel.app';
+
       }
     } catch (e) {
       console.log('Could not determine development server IP, falling back to localhost');
     }
-    
+
     // Fallback to a common development IP address if we can't get it automatically
     // You may need to change this to your actual IP address if it doesn't work
-    return 'http://10.0.2.2:4000'; // Android emulator default
+    // return 'http://10.0.2.2:4000'; // Android emulator default
+    return 'https://hospital-feedback-app-backend.vercel.app';
+
   }
 };
 
