@@ -1,24 +1,28 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, User, ClipboardList, Settings } from 'lucide-react-native';
-import { View, StyleSheet } from 'react-native';
-import { useEffect, useState } from 'react';
+import { Home, User, ClipboardList, Settings } from 'lucide-react-native';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+import { useEffect } from 'react';
 import Colors from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 
 export default function TabLayout() {
-  const { userData, isAuthenticated } = useAuth();
-  const [userRole, setUserRole] = useState<UserRole | undefined>(undefined);
+  const { userData, isAuthenticated, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (userData) {
-      setUserRole(userData.role);
-    }
-  }, [userData]);
+  // Block rendering of tabs until auth is hydrated to avoid flicker/wrong tabs
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading your session…</Text>
+      </View>
+    );
+  }
 
   // Determine if tabs should be visible based on user role
-  const showAuthorityDashboard = isAuthenticated && userData?.isAuthority && userRole !== 'super_admin';
-  const showAdminDashboard = isAuthenticated && userRole === 'super_admin';
+  const role: UserRole | undefined = userData?.role as UserRole | undefined;
+  const showAuthorityDashboard = isAuthenticated && !!userData?.isAuthority && role !== 'super_admin';
+  const showAdminDashboard = isAuthenticated && role === 'super_admin';
 
   return (
     <Tabs
@@ -52,7 +56,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="authority-dashboard"
         options={{
-          title: 'Dashboard',
+          title: 'Authority Dashboard',
           tabBarIcon: ({ color, size }) => (
             <ClipboardList size={size} color={color} strokeWidth={2} />
           ),
@@ -65,7 +69,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="admin-dashboard"
         options={{
-          title: 'Admin',
+          title: 'Admin Dashboard',
           tabBarIcon: ({ color, size }) => (
             <Settings size={size} color={color} strokeWidth={2} />
           ),
@@ -97,6 +101,18 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: Colors.text.secondary,
+    fontFamily: 'Montserrat-Medium',
+    fontSize: 12,
+  },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: 'white',

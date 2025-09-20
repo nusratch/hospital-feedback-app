@@ -130,7 +130,7 @@ const QUESTIONS = FEEDBACK_QUESTIONS.categories.flatMap(category =>
 
 export default function FeedbackScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   
   const [ratings, setRatings] = useState<{[key: string]: number}>({
     doctorBehavior: 0,
@@ -428,13 +428,6 @@ export default function FeedbackScreen() {
                 Your feedback is valuable to us and helps improve our services for future patients.
               </Text>
               
-              {errors.form && (
-                <View style={styles.errorContainer}>
-                  <AlertCircle size={16} color={Colors.error} />
-                  <Text style={styles.errorText}>{errors.form}</Text>
-                </View>
-              )}
-              
               {errors.ratings && (
                 <View style={styles.errorContainer}>
                   <AlertCircle size={16} color={Colors.error} />
@@ -480,15 +473,29 @@ export default function FeedbackScreen() {
               <View style={styles.userInfoContainer}>
                 <View style={styles.userInfoItem}>
                   <Text style={styles.userInfoLabel}>Email</Text>
-                  <Text style={styles.userInfoValue}>{user?.email || 'Not provided'}</Text>
+                  <Text style={styles.userInfoValue}>{authLoading ? 'Loading…' : (user?.email || 'Not provided')}</Text>
                 </View>
                 
                 <View style={styles.userInfoItem}>
                   <Text style={styles.userInfoLabel}>Phone</Text>
-                  <Text style={styles.userInfoValue}>{user?.phoneNumber || 'Not provided'}</Text>
+                  <Text style={styles.userInfoValue}>{authLoading ? 'Loading…' : (user?.phoneNumber || 'Not provided')}</Text>
                 </View>
               </View>
             </View>
+            
+            {errors.ratings && (
+              <View style={styles.errorContainer}>
+                <AlertCircle size={16} color={Colors.error} />
+                <Text style={styles.errorText}>{errors.ratings}</Text>
+              </View>
+            )}
+
+            {errors.form && (
+              <View style={styles.errorContainer}>
+                <AlertCircle size={16} color={Colors.error} />
+                <Text style={styles.errorText}>{errors.form}</Text>
+              </View>
+            )}
             
             <Button
               title={`Submit Feedback (${completedQuestions.length}/${QUESTIONS.length})`}

@@ -1,33 +1,27 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, ShieldCheck } from 'lucide-react-native';
+import { ChevronLeft, ShieldCheck, User } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { validateEmail, validatePhone } from '@/utils/validation';
+import { validateEmail } from '@/utils/validation';
 import Colors from '@/constants/Colors';
 import { sendOTP } from '@/services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
 
-  const [isEmailLogin, setIsEmailLogin] = useState(true);
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthorityLogin, setIsAuthorityLogin] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'authority' | 'patient' | null>(null);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
-    if (isEmailLogin) {
-      if (!email) newErrors.email = 'Email is required';
-      else if (!validateEmail(email)) newErrors.email = 'Invalid email format';
-    } else {
-      if (!phone) newErrors.phone = 'Phone number is required';
-      else if (!validatePhone(phone)) newErrors.phone = 'Invalid phone number';
-    }
+    if (!email) newErrors.email = 'Email is required';
+    else if (!validateEmail(email)) newErrors.email = 'Invalid email format';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -42,166 +36,156 @@ export default function LoginScreen() {
     try {
       // Use different API endpoint based on login type
       const response = await sendOTP(
-        isEmailLogin ? email : undefined,
-        !isEmailLogin ? phone : undefined,
-        isAuthorityLogin ? 'authority' : 'regular'
+        email,
+        undefined,
+        selectedRole === 'authority' ? 'authority' : 'regular'
       );
 
       if (response.success) {
         router.push({
           pathname: '/verify-otp',
           params: {
-            method: isEmailLogin ? 'email' : 'phone',
-            value: isEmailLogin ? email : phone,
+            method: 'email',
+            value: email,
             isLogin: 'true',
-            loginType: isAuthorityLogin ? 'authority' : 'regular'
+            loginType: selectedRole === 'authority' ? 'authority' : 'regular'
           }
         });
       } else {
         setErrors({
-          [isEmailLogin ? 'email' : 'phone']: response.message || 'Failed to send OTP. Please try again.'
+          email: response.message || 'Failed to send OTP. Please try again.'
         });
       }
     } catch (error) {
       setErrors({
-        [isEmailLogin ? 'email' : 'phone']: 'An error occurred. Please try again.'
+        email: 'An error occurred. Please try again.'
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const toggleLoginMethod = () => {
-    setIsEmailLogin(!isEmailLogin);
-    setErrors({});
-  };
-
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoid}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+    <LinearGradient
+      colors={['#e3f2fd', '#e0f7fa']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradient}
     >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.replace('/')}
-          >
-            <ChevronLeft size={24} color={Colors.text.primary} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Log In</Text>
-        </View>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => {
+                if (selectedRole) setSelectedRole(null);
+                else router.replace('/');
+              }}
+            >
+              <ChevronLeft size={24} color={Colors.text.primary} />
+            </TouchableOpacity>
+            <Text style={styles.title}>Log In</Text>
+          </View>
 
-        <View style={styles.formContainer}>
-          {/* Authority Login Toggle */}
-          <View style={styles.authorityToggleContainer}>
-            <View style={styles.toggleLabelContainer}>
-              <ShieldCheck size={20} color={isAuthorityLogin ? Colors.primary : Colors.text.secondary} />
-              <Text style={[styles.toggleLabel, isAuthorityLogin && styles.toggleLabelActive]}>
-                Authority Login
-              </Text>
+          {/* Registration-free note */}
+          <View style={styles.infoBanner}>
+            <Text style={styles.infoText}>No registration needed — enter your email to receive an OTP.</Text>
+          </View>
+
+          {selectedRole === null ? (
+            <View style={styles.formContainer}>
+              <Text style={styles.chooseRoleTitle}>Continue as</Text>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity
+                  style={styles.roleCard}
+                  onPress={() => {
+                    setSelectedRole('authority');
+                    setErrors({});
+                  }}
+                >
+                  <ShieldCheck size={28} color={Colors.primary} />
+                  <Text style={styles.roleTitle}>Authority</Text>
+                  <Text style={styles.roleSubtitle}>Manage and review feedback</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.roleCard}
+                  onPress={() => {
+                    setSelectedRole('patient');
+                    setErrors({});
+                  }}
+                >
+                  <User size={28} color={Colors.primary} />
+                  <Text style={styles.roleTitle}>Patient</Text>
+                  <Text style={styles.roleSubtitle}>Share your experience</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Switch
-              value={isAuthorityLogin}
-              onValueChange={setIsAuthorityLogin}
-              trackColor={{ false: Colors.gray[200], true: Colors.primary }}
-              thumbColor={Colors.background}
-            />
-          </View>
-          <View style={styles.segmentContainer}>
-            <TouchableOpacity
-              style={[
-                styles.segmentButton,
-                !isEmailLogin ? styles.segmentActive : {}
-              ]}
-              onPress={() => setIsEmailLogin(false)}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  !isEmailLogin ? styles.segmentTextActive : {}
-                ]}
-              >
-                Phone
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.segmentButton,
-                isEmailLogin ? styles.segmentActive : {}
-              ]}
-              onPress={() => setIsEmailLogin(true)}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  isEmailLogin ? styles.segmentTextActive : {}
-                ]}
-              >
-                Email
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {errors.form && (
-            <Text style={styles.errorText}>{errors.form}</Text>
-          )}
-
-          {isEmailLogin ? (
-            <Input
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={errors.email}
-            />
           ) : (
-            <Input
-              label="Phone Number"
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="Enter your phone number"
-              keyboardType="phone-pad"
-              error={errors.phone}
-            />
+            <View style={styles.formContainer}>
+              <View style={styles.rolePill}>
+                <Text style={styles.rolePillText}>
+                  {selectedRole === 'authority' ? 'Login as Authority' : 'Login as Patient'}
+                </Text>
+                <TouchableOpacity onPress={() => setSelectedRole(null)}>
+                  <Text style={styles.changeRoleText}>Change</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>Email</Text>
+                <Input
+                  label=""
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={errors.email}
+                />
+              </View>
+
+              <Text style={styles.otpInfo}>
+                We'll send you a one-time password to verify your identity
+              </Text>
+
+              <Button
+                title="Get OTP"
+                onPress={handleSendOTP}
+                loading={isLoading}
+                style={styles.loginButton}
+              />
+
+              <View style={styles.noteContainer}>
+                <Text style={styles.noteText}>
+                  By continuing, you agree to our Terms of Service and Privacy Policy
+                </Text>
+              </View>
+            </View>
           )}
-
-          <Text style={styles.otpInfo}>
-            We'll send you a one-time password to verify your identity
-          </Text>
-
-          <Button
-            title="Get OTP"
-            onPress={handleSendOTP}
-            loading={isLoading}
-            style={styles.loginButton}
-          />
-
-          <View style={styles.noteContainer}>
-            <Text style={styles.noteText}>
-              By continuing, you agree to our Terms of Service and Privacy Policy
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   keyboardAvoid: {
     flex: 1,
   },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
@@ -228,56 +212,91 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: Colors.text.primary,
   },
+  infoBanner: {
+    marginHorizontal: 24,
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderWidth: 1,
+    borderColor: Colors.gray[200],
+  },
+  infoText: {
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 13,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
   formContainer: {
     paddingHorizontal: 24,
     paddingTop: 40,
   },
-  authorityToggleContainer: {
+  chooseRoleTitle: {
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 18,
+    color: Colors.text.primary,
+    marginBottom: 16,
+  },
+  roleContainer: {
+    gap: 12,
+  },
+  roleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    padding: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.7)',
     borderWidth: 1,
     borderColor: Colors.gray[200],
   },
-  toggleLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  toggleLabel: {
+  roleTitle: {
     fontFamily: 'Montserrat-Medium',
     fontSize: 16,
+    color: Colors.text.primary,
+    marginLeft: 12,
+  },
+  roleSubtitle: {
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 12,
     color: Colors.text.secondary,
     marginLeft: 8,
   },
-  toggleLabelActive: {
-    color: Colors.primary,
-  },
-  segmentContainer: {
+  rolePill: {
     flexDirection: 'row',
-    backgroundColor: Colors.gray[100],
-    borderRadius: 8,
-    marginBottom: 24,
-  },
-  segmentButton: {
-    flex: 1,
-    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderWidth: 1,
+    borderColor: Colors.gray[200],
+    marginBottom: 16,
   },
-  segmentActive: {
-    backgroundColor: Colors.primary,
-  },
-  segmentText: {
+  rolePillText: {
     fontFamily: 'Montserrat-Medium',
     fontSize: 14,
-    color: Colors.text.secondary,
+    color: Colors.text.primary,
   },
-  segmentTextActive: {
-    color: 'white',
+  changeRoleText: {
+    fontFamily: 'Montserrat-Medium',
+    fontSize: 12,
+    color: Colors.primary,
+  },
+  formCard: {
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 1,
+    borderColor: Colors.gray[200],
+    marginBottom: 16,
+  },
+  formTitle: {
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 16,
+    color: Colors.text.primary,
+    marginBottom: 8,
   },
   errorText: {
     fontFamily: 'Montserrat-Regular',
