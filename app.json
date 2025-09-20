@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MatriaFeed",
-    "slug": "bolt-expo-nativewind",
+    "slug": "feedback-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/appicon.png",
@@ -27,11 +27,11 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "52434de4-3128-4f39-ad04-0ea18f58759a"
+        "projectId": "188bc10d-8087-42a6-9e7f-d6b64db71a67"
       }
     },
     "android": {
-      "package": "com.nsch.boltexponativewind"
+      "package": "com.nsch.feedbackapp"
     }
   }
 }
