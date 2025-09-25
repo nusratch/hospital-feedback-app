@@ -5,24 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Colors from '@/constants/Colors';
 import { fetchFeedbackCounts, FeedbackCountItem } from '@/services/analytics';
-import Svg, { Rect, G, Text as SvgText, Path, Circle, Line } from 'react-native-svg';
 import { ChevronLeft } from 'lucide-react-native';
+import { AmChartsColumnChart, AmChartsPie3DChart } from '@/components/charts/AmCharts';
+import type { ChartDatum } from '@/types';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const BAR_COLORS = [
-  Colors.primary,
-  Colors.secondary,
-  Colors.tertiary,
-  Colors.accent,
-  Colors.gold,
-  '#6C63FF',
-  '#00C49F',
-  '#FF8042',
-  '#8DD1E1',
-  '#FF6699',
-  '#82CA9D',
-  '#A28CF6',
-];
 
 export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
   const [loading, setLoading] = useState(true);
@@ -59,35 +46,15 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
     return { positive: pos, negative: neg };
   }, [data]);
 
-  // Chart dimensions
-  const BAR_W = 18;
-  const CHART_W = 360;
-  const CHART_H = 180;
-  const PADDING = 24;
-  const AXIS_H = CHART_H - PADDING * 2;
-  const maxCount = Math.max(1, ...monthCounts);
-  const yTicks = 4; // number of gridlines
+  // Prepare AmCharts-friendly data
+  const columnChartData: ChartDatum[] = useMemo(() => (
+    MONTHS.map((m, i) => ({ category: m, value: monthCounts[i] || 0 }))
+  ), [monthCounts]);
 
-  const PIE_SIZE = 200;
-  const radius = PIE_SIZE / 2 - 12;
-  const total = Math.max(positive + negative, 1);
-  const posAngle = (positive / total) * 2 * Math.PI;
-
-  const describeArc = (startAngle: number, sweepAngle: number, color: string) => {
-    const cx = PIE_SIZE / 2;
-    const cy = PIE_SIZE / 2;
-    const x0 = cx + radius * Math.cos(startAngle);
-    const y0 = cy + radius * Math.sin(startAngle);
-    const x1 = cx + radius * Math.cos(startAngle + sweepAngle);
-    const y1 = cy + radius * Math.sin(startAngle + sweepAngle);
-    const largeArc = sweepAngle > Math.PI ? 1 : 0;
-    return (
-      <Path
-        d={`M ${cx} ${cy} L ${x0} ${y0} A ${radius} ${radius} 0 ${largeArc} 1 ${x1} ${y1} Z`}
-        fill={color}
-      />
-    );
-  };
+  const pieChartData: ChartDatum[] = useMemo(() => ([
+    { category: 'Positive', value: positive },
+    { category: 'Negative', value: negative }
+  ]), [positive, negative]);
 
   if (loading) {
     return (
@@ -117,64 +84,25 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
           <Text style={styles.cardTitle}>Monthly Feedback Count</Text>
           <Text style={styles.cardSubtitle}>Month-wise submissions</Text>
           <View style={styles.chartCenter}>
-            <Svg width={CHART_W} height={CHART_H}>
-              <G x={PADDING} y={PADDING}>
-                <Line x1={0} y1={0} x2={0} y2={AXIS_H} stroke={Colors.gray[300]} strokeWidth={1} />
-                <Line x1={0} y1={AXIS_H} x2={CHART_W - PADDING * 2} y2={AXIS_H} stroke={Colors.gray[300]} strokeWidth={1} />
-                {Array.from({ length: yTicks + 1 }).map((_, t) => {
-                  const value = Math.round((maxCount / yTicks) * t);
-                  const y = AXIS_H - (AXIS_H * t) / yTicks;
-                  return (
-                    <G key={`ytick-${t}`}>
-                      <Line x1={0} y1={y} x2={CHART_W - PADDING * 2} y2={y} stroke={Colors.gray[200]} strokeWidth={1} />
-                      <SvgText x={-6} y={y + 3} fontSize={10} fill={Colors.gray[600]} textAnchor="end">
-                        {value}
-                      </SvgText>
-                    </G>
-                  );
-                })}
-                {monthCounts.map((count, i) => {
-                  const x = i * ((CHART_W - PADDING * 2) / 12) + 10;
-                  const h = (count / maxCount) * AXIS_H;
-                  const y = AXIS_H - h;
-                  const color = BAR_COLORS[i % BAR_COLORS.length];
-                  return (
-                    <G key={`bar-${i}`}>
-                      <Rect x={x} y={y} width={BAR_W} height={Math.max(h, 2)} rx={6} fill={color} />
-                      <SvgText x={x + BAR_W / 2} y={AXIS_H + 14} fontSize={10} fill={Colors.gray[600]} textAnchor="middle">
-                        {MONTHS[i]}
-                      </SvgText>
-                      {count > 0 && (
-                        <SvgText x={x + BAR_W / 2} y={y - 4} fontSize={10} fill={Colors.text.primary} textAnchor="middle">
-                          {count}
-                        </SvgText>
-                      )}
-                    </G>
-                  );
-                })}
-                <SvgText x={(CHART_W - PADDING * 2) / 2} y={AXIS_H + 30} fontSize={12} fill={Colors.gray[700]} textAnchor="middle">
-                  Months
-                </SvgText>
-                <SvgText x={-40} y={AXIS_H / 2} fontSize={12} fill={Colors.gray[700]} textAnchor="middle" transform={`rotate(-90 -40, ${AXIS_H / 2})`}>
-                  Count
-                </SvgText>
-              </G>
-            </Svg>
+            <AmChartsColumnChart
+              data={columnChartData}
+              categoryField="category"
+              valueField="value"
+              height={260}
+            />
           </View>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Sentiment Split</Text>
           <Text style={styles.cardSubtitle}>Positive vs Negative</Text>
           <View style={styles.pieContainer}>
-            <Svg width={PIE_SIZE} height={PIE_SIZE}>
-              {describeArc(-Math.PI / 2, posAngle, Colors.success)}
-              {describeArc(-Math.PI / 2 + posAngle, 2 * Math.PI - posAngle, Colors.error)}
-              <Circle cx={PIE_SIZE / 2} cy={PIE_SIZE / 2} r={radius * 0.55} fill="white" />
-              <SvgText x={PIE_SIZE / 2} y={PIE_SIZE / 2} fontSize={18} fontWeight={'600'} fill={Colors.text.primary} textAnchor="middle" alignmentBaseline="middle">
-                {total}
-              </SvgText>
-            </Svg>
-            <View style={styles.legendBelow}>
+            <AmChartsPie3DChart
+              data={pieChartData}
+              categoryField="category"
+              valueField="value"
+              height={260}
+            />
+            {/* <View style={styles.legendBelow}>
               <View style={styles.legendRow}>
                 <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
                 <Text style={styles.legendText}>Positive: {positive}</Text>
@@ -183,7 +111,7 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
                 <View style={[styles.legendDot, { backgroundColor: Colors.error }]} />
                 <Text style={styles.legendText}>Negative: {negative}</Text>
               </View>
-            </View>
+            </View> */}
           </View>
         </View>
       </ScrollView>

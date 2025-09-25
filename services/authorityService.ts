@@ -3,7 +3,7 @@ import { AuthorityUser, AuthorityRoleMapping } from '@/types';
 const fallbackAuthorityRoles = AuthorityRoleMapping;
 
 // This would be replaced with actual API calls in production
-// const API_BASE_URL = 'http://172.26.59.176:4000';
+// const API_BASE_URL = 'http://localhost:4000';
 const API_BASE_URL = 'https://hospital-feedback-app-backend.vercel.app';
 
 /**

@@ -16,7 +16,7 @@ import { AuthorityRoleMapping, AuthorityUser } from '@/types';
 import { fetchTokens as fetchHospitalTokens, addToken as addHospitalToken, HospitalToken } from '../../services/tokenService';
 
 // Super admin email - must match the one in authorityRoleMapping in types/index.ts
-const SUPER_ADMIN_EMAIL = 'SUPERADMIN@HOSPITAL.COM';
+const SUPER_ADMIN_EMAIL = 'nusratchy.002+admin@gmail.com';
 
 export default function AdminDashboardScreen() {
   const { user, isAuthenticated, isLoading } = useAuth();

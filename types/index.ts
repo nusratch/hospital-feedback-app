@@ -89,66 +89,72 @@ interface AuthorityUser {
   role: string;
 }
 
+// Define a simple chart datum type for reusable chart components
+interface ChartDatum {
+  category: string;
+  value: number;
+}
+
 // Authority role mapping
 const authorityRoleMapping: Record<string, AuthorityUser> = {
   medical_director: {
-    email: 'dr.director@hospital.com',
+    email: 'nusratchy.002+medicaldirector@gmail.com',
     name: 'Dr. Smith',
     phone: '+1234567890',
     department: 'Medical',
     role: 'medical_director'
   },
   nursing_head: {
-    email: 'nurse.head@hospital.com',
+    email: 'nusratchy.002+nursinghead@gmail.com',
     name: 'Sarah Johnson',
     phone: '+1234567891',
     department: 'Nursing',
     role: 'nursing_head'
   },
   operations_manager: {
-    email: 'ops.manager@hospital.com',
+    email: 'nusratchy.002+operationsmanager@gmail.com',
     name: 'Michael Brown',
     phone: '+1234567892',
     department: 'Operations',
     role: 'operations_manager'
   },
   housekeeping_manager: {
-    email: 'housekeeping@hospital.com',
+    email: 'nusratchy.002+housekeeping@gmail.com',
     name: 'Emma Wilson',
     phone: '+1234567893',
     department: 'Housekeeping',
     role: 'housekeeping_manager'
   },
   pharmacy_head: {
-    email: 'pharmacy.head@hospital.com',
+    email: 'nusratchy.002+pharmacy@gmail.com',
     name: 'Dr. Robert Taylor',
     phone: '+1234567894',
     department: 'Pharmacy',
     role: 'pharmacy_head'
   },
   front_desk_manager: {
-    email: 'frontdesk@hospital.com',
+    email: 'nusratchy.002+frontdesk@gmail.com',
     name: 'Lisa Anderson',
     phone: '+1234567895',
     department: 'Reception',
     role: 'front_desk_manager'
   },
   facilities_manager: {
-    email: 'facilities@hospital.com',
+    email: 'nusratchy.002+facilities@gmail.com',
     name: 'James Wilson',
     phone: '+1234567896',
     department: 'Facilities',
     role: 'facilities_manager'
   },
   finance_manager: {
-    email: 'finance@hospital.com',
+    email: 'nusratchy.002+finance@gmail.com',
     name: 'Jennifer Lee',
     phone: '+1234567897',
     department: 'Finance',
     role: 'finance_manager'
   },
   hospital_administrator: {
-    email: 'admin@hospital.com',
+    email: 'nusratchy.002+admin@gmail.com',
     name: 'David Miller',
     phone: '+1234567898',
     department: 'Administration',
@@ -194,7 +200,8 @@ export type {
   Feedback,
   FeedbackStatus,
   FeedbackSubmission,
-  FeedbackField
+  FeedbackField,
+  ChartDatum
 };
 
 // Export constants with new names to avoid conflicts
