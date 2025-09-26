@@ -1,9 +1,13 @@
+import 'react-native-gesture-handler';
+import 'react-native-reanimated';
+
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useFonts } from 'expo-font';
+
 import { 
   Montserrat_400Regular, 
   Montserrat_500Medium, 
@@ -31,6 +35,14 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  // Safety: Ensure splash hides after a timeout in case of unexpected issues in production
+  useEffect(() => {
+    const t = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 4000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Return null to keep splash screen visible while fonts load
   if (!fontsLoaded && !fontError) {
