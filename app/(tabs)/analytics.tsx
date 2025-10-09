@@ -56,17 +56,17 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
     { category: 'Negative', value: negative }
   ]), [positive, negative]);
 
-  if (loading) {
-    return (
-      <View style={embedded ? styles.embeddedContainer : styles.container}>
-        {!embedded && <Header title="Analytics" />}
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading analytics...</Text>
-        </View>
-      </View>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <View style={embedded ? styles.embeddedContainer : styles.container}>
+  //       {!embedded && <Header title="Analytics" />}
+  //       <View style={styles.centered}>
+  //         <ActivityIndicator size="large" color={Colors.primary} />
+  //         <Text style={styles.loadingText}>Loading analytics...</Text>
+  //       </View>
+  //     </View>
+  //   );
+  // }
 
   return (
     <View style={embedded ? styles.embeddedContainer : styles.container}>
