@@ -2,6 +2,7 @@ import { User, AuthTokens, AuthorityRoleMapping, UserRole } from '@/types';
 
 const authorityRoleMapping = AuthorityRoleMapping;
 import { getApiUrl } from '@/config/env';
+import { getTokens } from '@/utils/storage';
 
 // Mock API functions
 export const login = async (credentials: { email?: string; phone?: string; otpVerified?: boolean, user: User }): Promise<{ user: User; }> => {
@@ -200,11 +201,14 @@ export const updateUserField = async (userId: string, field: string, value: stri
     };
 
     // Make API call to update user field
+    const tokens = await getTokens();
+    const accessToken = tokens?.accessToken;
+    
     const response = await fetch(getApiUrl(`users/update-user/${userId}`), {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify(payload)
     });
@@ -219,13 +223,6 @@ export const updateUserField = async (userId: string, field: string, value: stri
     const data = await response.json();
     console.log(`Successfully updated user ${userId} field ${field} to ${value}`);
 
-    // Update local storage if email or phone is being updated
-    if (field === 'email') {
-      localStorage.setItem('userEmail', value);
-    } else if (field === 'phone') {
-      localStorage.setItem('userPhone', value);
-    }
-
     return data.success;
   } catch (error) {
     console.error('Error updating user field:', error);
@@ -234,13 +231,6 @@ export const updateUserField = async (userId: string, field: string, value: stri
     // In production, you would want to throw the error
     if ((error as Error).message === 'OTP verification required for this field') {
       throw error;
-    }
-
-    // Update local storage even in development mode
-    if (field === 'email') {
-      localStorage.setItem('userEmail', value);
-    } else if (field === 'phone') {
-      localStorage.setItem('userPhone', value);
     }
 
     console.log(`[DEV MODE] Simulated update for user ${userId} field ${field} to ${value}`);

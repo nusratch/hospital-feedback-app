@@ -104,6 +104,7 @@ export default function ThankYouModal({ visible, onClose }: ThankYouModalProps) 
                     styles.checkmarkContainer,
                     {
                       opacity: checkmarkStrokeOpacity,
+                      transform: [{ scale: checkmarkAnim }],
                     },
                   ]}
                 >
@@ -111,13 +112,6 @@ export default function ThankYouModal({ visible, onClose }: ThankYouModalProps) 
                     size={36} 
                     color="white" 
                     strokeWidth={3}
-                    style={{
-                      strokeDasharray: [100],
-                      strokeDashoffset: checkmarkPathLength.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [100, 0],
-                      }),
-                    } as any}
                   />
                 </Animated.View>
               </View>

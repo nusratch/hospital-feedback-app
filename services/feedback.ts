@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/config/env';
 import { Feedback, FeedbackFieldToRoleMapping, GetUrgencyLevel } from '@/types';
+import { getTokens } from '@/utils/storage';
 
 // Define the new feedback submission interface based on backend schema
 export interface FeedbackSubmission {
@@ -27,13 +28,14 @@ export const fetchUserFeedbacks = async (userId: string): Promise<Feedback[]> =>
       throw new Error('User ID is required');
     }
 
-    const accessToken = JSON.parse(localStorage.getItem('auth_tokens') || '')?.accessToken;
+    const tokens = await getTokens();
+    const accessToken = tokens?.accessToken;
     // Attempt to fetch feedbacks from the API
     const response = await fetch(`${API_BASE_URL}/feedback/feedback-list/${userId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}` // Assuming token is stored in localStorage
+        'Authorization': `Bearer ${accessToken}`
       }
     });
 
@@ -56,8 +58,16 @@ export const submitFeedback = async (
   console.log('Submitting feedback:', JSON.stringify(feedback, null, 2));
 
   try {
-    const accessToken = JSON.parse(localStorage.getItem('auth_tokens') || '')?.accessToken;
+    const tokens = await getTokens();
+    const accessToken = tokens?.accessToken;
 
+    if (!accessToken) {
+      console.error('No access token available');
+      return { ok: false, message: 'Authentication required. Please log in again.' };
+    }
+
+    console.log('Making request to:', `${API_BASE_URL}/feedback/new-feedback`);
+    
     const response = await fetch(`${API_BASE_URL}/feedback/new-feedback`, {
       method: 'POST',
       headers: {
@@ -67,19 +77,24 @@ export const submitFeedback = async (
       body: JSON.stringify(feedback),
     });
 
+    console.log('Response status:', response.status);
+    
     const data = await safeJson(response);
     if (!response.ok || data?.success === false) {
       const message = data?.message || 'Failed to submit feedback';
+      console.error('Submission failed:', message);
       return { ok: false, message };
     }
 
     // Success: return message and maybe created ID if provided
     const message = data?.message || 'Feedback submitted successfully';
     const id = data?.id || data?.data?.id;
+    console.log('Feedback submitted successfully');
     return { ok: true, message, id };
   } catch (error) {
     console.error('Error submitting feedback:', error);
-    return { ok: false, message: 'Failed to submit feedback' };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to submit feedback';
+    return { ok: false, message: `Network error: ${errorMessage}` };
   }
 };
 
@@ -90,11 +105,13 @@ async function safeJson(res: Response) {
 // New function to check feedback status and update it
 export const checkFeedbackStatus = async (feedbackId: string): Promise<string> => {
   try {
+    const tokens = await getTokens();
+    const accessToken = tokens?.accessToken;
     const response = await fetch(`${API_BASE_URL}/feedback/${feedbackId}/status`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        'Authorization': `Bearer ${accessToken}`
       }
     });
 
@@ -113,7 +130,8 @@ export const checkFeedbackStatus = async (feedbackId: string): Promise<string> =
 // Function to fetch feedback items for authority review
 export const fetchAuthorityFeedbacks = async (role: string): Promise<any[]> => {
   try {
-    const accessToken = JSON.parse(localStorage.getItem('auth_tokens') || '')?.accessToken;
+    const tokens = await getTokens();
+    const accessToken = tokens?.accessToken;
     
     // In a real app, this would be an API call to get feedback items for the authority
     const response = await fetch(`${API_BASE_URL}/authorities/feedback-list/${role}`, {
@@ -146,7 +164,8 @@ export const updateFeedbackStatus = async (
   reviewerRole: string
 ): Promise<boolean> => {
   try {
-    const accessToken = JSON.parse(localStorage.getItem('auth_tokens') || '')?.accessToken;
+    const tokens = await getTokens();
+    const accessToken = tokens?.accessToken;
     
     const payload = {
       status,
