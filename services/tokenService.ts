@@ -5,6 +5,7 @@ export interface HospitalToken {
   token: string;
   createdAt?: string;
   createdBy?: string;
+  used?: boolean;
 }
 
 export const fetchTokens = async (): Promise<HospitalToken[]> => {
@@ -45,7 +46,7 @@ export const addToken = async (
     const message = data?.message || 'Token created successfully';
     const tokenObj: HospitalToken | undefined =
       typeof data?.token === 'string'
-        ? { token: data.token }
+        ? { token: data.token, used: false }
         : (data?.data || data?.token);
     return { ok: true, message, token: tokenObj };
   } catch (e) {
