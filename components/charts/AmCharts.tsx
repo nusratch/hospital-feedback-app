@@ -95,6 +95,13 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
       fontFamily: 'System',
       fontWeight: '400' as const,
     },
+    labelComponent: () => (
+      <View style={{ transform: [{ rotate: '30deg' }], width: 100, marginLeft: -8, marginTop: 33 }}>
+        <Text style={{ color: Colors.text.secondary, fontSize: 10, textAlign: 'left' }}>
+          {String(item[categoryField])}
+        </Text>
+      </View>
+    ),
   }));
 
 
@@ -114,7 +121,7 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
       <BarChart
         data={barData}
         width={undefined}
-        height={height - 50}
+        height={height - 120}
         barWidth={20}
         barBorderRadius={6}
         hideRules
@@ -132,13 +139,14 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
           textAlign: 'center' as const,
         }}
         rotateLabel
-        xAxisTextNumberOfLines={2}
-        labelsExtraHeight={30}
+        xAxisTextNumberOfLines={1}
+        labelsExtraHeight={100}
         noOfSections={noOfSections}
         maxValue={roundedMaxValue}
         stepValue={roundedMaxValue / noOfSections}
-        initialSpacing={1}
-        endSpacing={15}
+        initialSpacing={5}
+        spacing={25}
+        endSpacing={20}
         showGradient={false}
         isAnimated
         animationDuration={1000}

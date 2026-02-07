@@ -31,102 +31,83 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
     load();
   }, []);
 
-  // Derive month-wise counts
-  const monthCounts = useMemo(() => {
-    const counts = new Array(12).fill(0);
+  // Helper to parse dates for sorting
+  const parseDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0);
+    if (dateStr.includes('-')) return new Date(dateStr);
+    // For "09 Aug 2025"
+    const parts = dateStr.split(' ');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const mon = parts[1];
+      const year = parseInt(parts[2], 10);
+      const monthIdx = MONTHS.findIndex(m => m.toLowerCase() === mon.substring(0, 3).toLowerCase());
+      if (monthIdx !== -1) return new Date(year, monthIdx, day);
+    }
+    return new Date(0);
+  };
+
+  // Group data by date
+  const groupedData = useMemo(() => {
+    const totalByDate: Record<string, number> = {};
+    const positiveByDate: Record<string, number> = {};
+    const negativeByDate: Record<string, number> = {};
+
     data.forEach(item => {
-      const dateStr = item.createAt || '';
-      let monthIdx = -1;
-      
-      if (dateStr.includes('-')) {
-        // Handle ISO like 2025-08-09
-        const parts = dateStr.split('-');
-        if (parts.length >= 2) {
-          const m = parseInt(parts[1], 10);
-          if (!isNaN(m)) monthIdx = m - 1;
-        }
+      const dateStr = item.createAt || 'Unknown';
+      const isPositive = (item.feedbackType || '').toLowerCase().trim() === 'positive';
+
+      totalByDate[dateStr] = (totalByDate[dateStr] || 0) + 1;
+      if (isPositive) {
+        positiveByDate[dateStr] = (positiveByDate[dateStr] || 0) + 1;
       } else {
-        // Handle "09 Aug 2025"
-        const parts = dateStr.split(' ');
-        const mon = parts[1];
-        monthIdx = MONTHS.findIndex(m => m.toLowerCase() === (mon || '').substring(0,3).toLowerCase());
+        negativeByDate[dateStr] = (negativeByDate[dateStr] || 0) + 1;
       }
-      
-      if (monthIdx >= 0 && monthIdx < 12) counts[monthIdx] += 1;
     });
-    return counts;
+
+    // Get all unique dates and sort them chronologically
+    const allDates = Object.keys(totalByDate).sort((a, b) => {
+      return parseDate(a).getTime() - parseDate(b).getTime();
+    });
+
+    return {
+      allDates,
+      totalByDate,
+      positiveByDate,
+      negativeByDate
+    };
   }, [data]);
 
-  // Positive feedback month-wise counts
-  const positiveMonthCounts = useMemo(() => {
-    const counts = new Array(12).fill(0);
-    data.filter(item => (item.feedbackType || '').toLowerCase().trim() === 'positive').forEach(item => {
-      const dateStr = item.createAt || '';
-      let monthIdx = -1;
-      
-      if (dateStr.includes('-')) {
-        const parts = dateStr.split('-');
-        if (parts.length >= 2) {
-          const m = parseInt(parts[1], 10);
-          if (!isNaN(m)) monthIdx = m - 1;
-        }
-      } else {
-        const parts = dateStr.split(' ');
-        const mon = parts[1];
-        monthIdx = MONTHS.findIndex(m => m.toLowerCase() === (mon || '').substring(0,3).toLowerCase());
-      }
-      
-      if (monthIdx >= 0 && monthIdx < 12) counts[monthIdx] += 1;
-    });
-    return counts;
-  }, [data]);
-
-  // Negative feedback month-wise counts
-  const negativeMonthCounts = useMemo(() => {
-    const counts = new Array(12).fill(0);
-    // Use the same logic as the sentiment split: if it's not positive, it's negative
-    data.filter(item => (item.feedbackType || '').toLowerCase().trim() !== 'positive').forEach(item => {
-      const dateStr = item.createAt || '';
-      let monthIdx = -1;
-      
-      if (dateStr.includes('-')) {
-        const parts = dateStr.split('-');
-        if (parts.length >= 2) {
-          const m = parseInt(parts[1], 10);
-          if (!isNaN(m)) monthIdx = m - 1;
-        }
-      } else {
-        const parts = dateStr.split(' ');
-        const mon = parts[1];
-        monthIdx = MONTHS.findIndex(m => m.toLowerCase() === (mon || '').substring(0,3).toLowerCase());
-      }
-      
-      if (monthIdx >= 0 && monthIdx < 12) counts[monthIdx] += 1;
-    });
-    return counts;
-  }, [data]);
-
-  // Positive/Negative counts
+  // Positive/Negative counts for the pie chart
   const { positive, negative } = useMemo(() => {
     let pos = 0, neg = 0;
     data.forEach(d => {
-      if ((d.feedbackType || '').toLowerCase() === 'positive') pos++; else neg++;
+      if ((d.feedbackType || '').toLowerCase().trim() === 'positive') pos++; else neg++;
     });
     return { positive: pos, negative: neg };
   }, [data]);
 
-  // Prepare AmCharts-friendly data
+  // Prepare AmCharts-friendly data (Date-wise)
   const columnChartData: ChartDatum[] = useMemo(() => (
-    MONTHS.map((m, i) => ({ category: m, value: monthCounts[i] || 0 }))
-  ), [monthCounts]);
+    groupedData.allDates.map(date => ({ 
+      category: date, 
+      value: groupedData.totalByDate[date] || 0 
+    }))
+  ), [groupedData]);
 
   const positiveColumnChartData: ChartDatum[] = useMemo(() => (
-    MONTHS.map((m, i) => ({ category: m, value: positiveMonthCounts[i] || 0 }))
-  ), [positiveMonthCounts]);
+    groupedData.allDates.map(date => ({ 
+      category: date, 
+      value: groupedData.positiveByDate[date] || 0 
+    }))
+  ), [groupedData]);
 
   const negativeColumnChartData: ChartDatum[] = useMemo(() => (
-    MONTHS.map((m, i) => ({ category: m, value: negativeMonthCounts[i] || 0 }))
-  ), [negativeMonthCounts]);
+    groupedData.allDates.map(date => ({ 
+      category: date, 
+      value: groupedData.negativeByDate[date] || 0 
+    }))
+  ), [groupedData]);
 
   const pieChartData: ChartDatum[] = useMemo(() => ([
     { category: 'Positive', value: positive },
