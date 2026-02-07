@@ -99,9 +99,15 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
 
 
   // Calculate max value for proper scaling
-  const maxValue = Math.max(...data.map((item) => item[valueField] as number));
-  const yAxisMax = Math.ceil(maxValue * 1.1); // Add 10% padding
-
+  const maxValue = Math.max(...data.map((item) => item[valueField] as number), 0);
+  
+  // Ensure we have at least 1 as maxValue to avoid division by zero
+  const displayMaxValue = Math.max(1, Math.ceil(maxValue * 1.1));
+  
+  // To avoid repeating numbers (like 0, 0, 1, 1), we should ensure noOfSections 
+  // results in integer increments. If maxValue is small, we use maxValue as sections.
+  const noOfSections = displayMaxValue <= 5 ? displayMaxValue : 5;
+  const roundedMaxValue = Math.ceil(displayMaxValue / noOfSections) * noOfSections;
 
   return (
     <View style={[{ height, backgroundColor, paddingVertical: 10 }, style]}>
@@ -128,8 +134,9 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
         rotateLabel
         xAxisTextNumberOfLines={2}
         labelsExtraHeight={30}
-        noOfSections={5}
-        maxValue={yAxisMax}
+        noOfSections={noOfSections}
+        maxValue={roundedMaxValue}
+        stepValue={roundedMaxValue / noOfSections}
         initialSpacing={1}
         endSpacing={15}
         showGradient={false}

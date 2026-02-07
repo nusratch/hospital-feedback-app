@@ -19,6 +19,12 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
     const load = async () => {
       setLoading(true);
       const list = await fetchFeedbackCounts();
+      console.log('Analytics data received:', list.length, 'items');
+      if (list.length > 0) {
+        console.log('Sample item:', JSON.stringify(list[0]));
+        const types = [...new Set(list.map(item => item.feedbackType))];
+        console.log('Unique feedback types:', types);
+      }
       setData(list);
       setLoading(false);
     };
@@ -29,10 +35,73 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
   const monthCounts = useMemo(() => {
     const counts = new Array(12).fill(0);
     data.forEach(item => {
-      const parts = (item.createAt || '').split(' ');
-      const mon = parts[1];
-      const idx = MONTHS.findIndex(m => m.toLowerCase() === (mon || '').substring(0,3).toLowerCase());
-      if (idx >= 0) counts[idx] += 1;
+      const dateStr = item.createAt || '';
+      let monthIdx = -1;
+      
+      if (dateStr.includes('-')) {
+        // Handle ISO like 2025-08-09
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) {
+          const m = parseInt(parts[1], 10);
+          if (!isNaN(m)) monthIdx = m - 1;
+        }
+      } else {
+        // Handle "09 Aug 2025"
+        const parts = dateStr.split(' ');
+        const mon = parts[1];
+        monthIdx = MONTHS.findIndex(m => m.toLowerCase() === (mon || '').substring(0,3).toLowerCase());
+      }
+      
+      if (monthIdx >= 0 && monthIdx < 12) counts[monthIdx] += 1;
+    });
+    return counts;
+  }, [data]);
+
+  // Positive feedback month-wise counts
+  const positiveMonthCounts = useMemo(() => {
+    const counts = new Array(12).fill(0);
+    data.filter(item => (item.feedbackType || '').toLowerCase().trim() === 'positive').forEach(item => {
+      const dateStr = item.createAt || '';
+      let monthIdx = -1;
+      
+      if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) {
+          const m = parseInt(parts[1], 10);
+          if (!isNaN(m)) monthIdx = m - 1;
+        }
+      } else {
+        const parts = dateStr.split(' ');
+        const mon = parts[1];
+        monthIdx = MONTHS.findIndex(m => m.toLowerCase() === (mon || '').substring(0,3).toLowerCase());
+      }
+      
+      if (monthIdx >= 0 && monthIdx < 12) counts[monthIdx] += 1;
+    });
+    return counts;
+  }, [data]);
+
+  // Negative feedback month-wise counts
+  const negativeMonthCounts = useMemo(() => {
+    const counts = new Array(12).fill(0);
+    // Use the same logic as the sentiment split: if it's not positive, it's negative
+    data.filter(item => (item.feedbackType || '').toLowerCase().trim() !== 'positive').forEach(item => {
+      const dateStr = item.createAt || '';
+      let monthIdx = -1;
+      
+      if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) {
+          const m = parseInt(parts[1], 10);
+          if (!isNaN(m)) monthIdx = m - 1;
+        }
+      } else {
+        const parts = dateStr.split(' ');
+        const mon = parts[1];
+        monthIdx = MONTHS.findIndex(m => m.toLowerCase() === (mon || '').substring(0,3).toLowerCase());
+      }
+      
+      if (monthIdx >= 0 && monthIdx < 12) counts[monthIdx] += 1;
     });
     return counts;
   }, [data]);
@@ -50,6 +119,14 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
   const columnChartData: ChartDatum[] = useMemo(() => (
     MONTHS.map((m, i) => ({ category: m, value: monthCounts[i] || 0 }))
   ), [monthCounts]);
+
+  const positiveColumnChartData: ChartDatum[] = useMemo(() => (
+    MONTHS.map((m, i) => ({ category: m, value: positiveMonthCounts[i] || 0 }))
+  ), [positiveMonthCounts]);
+
+  const negativeColumnChartData: ChartDatum[] = useMemo(() => (
+    MONTHS.map((m, i) => ({ category: m, value: negativeMonthCounts[i] || 0 }))
+  ), [negativeMonthCounts]);
 
   const pieChartData: ChartDatum[] = useMemo(() => ([
     { category: 'Positive', value: positive },
@@ -92,6 +169,35 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
             />
           </View>
         </View>
+
+        {/* Positive Feedback Count Chart */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Positive Feedback Count</Text>
+          <Text style={styles.cardSubtitle}>Month-wise positive submissions</Text>
+          <View style={styles.chartCenter}>
+            <AmChartsColumnChart
+              data={positiveColumnChartData}
+              categoryField="category"
+              valueField="value"
+              height={260}
+            />
+          </View>
+        </View>
+
+        {/* Negative Feedback Count Chart */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Negative Feedback Count</Text>
+          <Text style={styles.cardSubtitle}>Month-wise negative submissions</Text>
+          <View style={styles.chartCenter}>
+            <AmChartsColumnChart
+              data={negativeColumnChartData}
+              categoryField="category"
+              valueField="value"
+              height={260}
+            />
+          </View>
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Sentiment Split</Text>
           <Text style={styles.cardSubtitle}>Positive vs Negative</Text>
