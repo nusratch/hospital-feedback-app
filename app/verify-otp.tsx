@@ -118,10 +118,10 @@ export default function VerifyOTPScreen() {
           });
           
           // Redirect based on user role
-          if (user.isAuthority) {
-            router.replace('/(tabs)/authority-dashboard');
-          } else if (user.isSuperAdmin) {
+          if (user.isSuperAdmin) {
             router.replace('/(tabs)/admin-dashboard');
+          } else if (user.isAuthority) {
+            router.replace('/(tabs)/authority-dashboard');
           } else {
             router.replace('/(tabs)');
           }

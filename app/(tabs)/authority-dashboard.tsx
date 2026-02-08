@@ -5,13 +5,14 @@ import Header from '@/components/layout/Header';
 import Colors from '@/constants/Colors';
 import { fetchAuthorityFeedbacks, updateFeedbackStatus } from '@/services/feedback';
 import { useRouter } from 'expo-router';
-import { AlertCircle, CheckCircle } from 'lucide-react-native';
+import { RefreshCw, AlertCircle, CheckCircle } from 'lucide-react-native';
 
 interface AuthorityFeedbackItem {
   id: string;
   authority: string;
   field: string;
   message: string;
+  additionalComments?: string;
   urgency: 'Low' | 'Medium' | 'High';
   status: 'pending' | 'in_progress' | 'resolved';
   rating: number;
@@ -159,7 +160,11 @@ export default function AuthorityDashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Authority Dashboard" />
+      <Header 
+        title="Authority Dashboard" 
+        rightIcon={<RefreshCw size={20} color={Colors.primary} />}
+        onRightPress={handleRefresh}
+      />
       
       <View style={styles.roleInfoContainer}>
         <Text style={styles.roleTitle}>
@@ -194,6 +199,13 @@ export default function AuthorityDashboardScreen() {
               
               <Text style={styles.hospitalName}>{item.hospitalName}</Text>
               <Text style={styles.messageText}>{item.message}</Text>
+
+              {item.additionalComments && (
+                <View style={styles.commentsContainer}>
+                  <Text style={styles.commentsLabel}>Issues/Concerns:</Text>
+                  <Text style={styles.commentsText}>{item.additionalComments}</Text>
+                </View>
+              )}
               
               <View style={styles.feedbackFooter}>
                 {item.status === 'resolved' ? (
@@ -341,6 +353,26 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+  commentsContainer: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.primary + '10',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+  },
+  commentsLabel: {
+    fontWeight: '600',
+    fontSize: 13,
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  commentsText: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    lineHeight: 18,
+  },
   resolvedItem: {
     opacity: 0.8,
   },
@@ -440,5 +472,9 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textAlign: 'center',
     marginTop: 16,
+  },
+  headerRefreshButton: {
+    marginRight: 10,
+    padding: 5,
   },
 });

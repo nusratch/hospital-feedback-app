@@ -34,8 +34,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Load authority roles from the backend - not dependent on any state
   const loadAuthorityRoles = async () => {
-    // Only fetch if not already loaded
-    if (rolesLoadedRef.current) {
+    // Only fetch if not already loaded or if cache is empty
+    if (rolesLoadedRef.current && Object.keys(authorityRoles).length > 0) {
       return authorityRoles;
     }
     
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
-      await loadAuthorityRoles();
+      const roles = await loadAuthorityRoles();
       const tokens = await getTokens();
       
       if (tokens) {
@@ -76,8 +76,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Set user data even if email is missing to avoid unintended logout UI state
             if (profileData) {
               if (profileData.email) {
-                const isAuthority = checkIfUserIsAuthority(profileData.email);
-                const role = getUserRoleFromEmail(profileData.email);
+                const authorityUser = getAuthorityUserByEmail(profileData.email, roles);
+                const isAuthority = !!authorityUser;
+                const role: UserRole | undefined =
+                  (profileData.isSuperAdmin ? 'super_admin' : (authorityUser?.role as UserRole | undefined)) ||
+                  (profileData.role as UserRole | undefined) ||
+                  'user';
 
                 const enhancedProfileData = {
                   ...profileData,
@@ -104,7 +108,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     initAuth();
-  }, [checkIfUserIsAuthority, getUserRoleFromEmail]);
+  }, []);
 
   const login = async (credentials: { email?: string; phone?: string; otpVerified?: boolean, user: User }) => {
     if (!credentials.otpVerified) {

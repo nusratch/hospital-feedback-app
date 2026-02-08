@@ -11,7 +11,7 @@ import {
   createAuthorityUser,
   deleteAuthorityUser
 } from '../../services/authorityService';
-import { Edit2, Save, X, Plus, Trash2, User, Mail, Phone, AlertCircle, CheckCircle, Users, Key, BarChart3, CheckSquare } from 'lucide-react-native';
+import { RefreshCw, Edit2, Save, X, Plus, Trash2, User, Mail, Phone, AlertCircle, CheckCircle, Users, Key, BarChart3, CheckSquare } from 'lucide-react-native';
 import { AuthorityRoleMapping, AuthorityUser } from '@/types';
 import { fetchTokens as fetchHospitalTokens, addToken as addHospitalToken, HospitalToken } from '../../services/tokenService';
 import { Picker } from '@react-native-picker/picker';
@@ -89,8 +89,17 @@ export default function AdminDashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadAuthorityData();
-    setRefreshing(false);
+    try {
+      await Promise.all([
+        loadAuthorityData(),
+        loadTokens(),
+        loadAuthorityFeedbacks()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing dashboard data:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleAddToken = async () => {
@@ -449,7 +458,7 @@ export default function AdminDashboardScreen() {
       case 'resolved':
         return 'Resolved';
       default:
-        return status;
+        return 'Unknown';
     }
   };
 
@@ -461,10 +470,13 @@ export default function AdminDashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Admin Dashboard" />
+      <Header 
+        title="Admin Dashboard" 
+        rightIcon={<RefreshCw size={20} color={Colors.primary} />}
+        onRightPress={onRefresh}
+      />
 
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header Navigation */}
         <View style={styles.headerNavBar}>
           <View style={styles.navRow}>
             <TouchableOpacity
