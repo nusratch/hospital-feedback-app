@@ -46,7 +46,7 @@ const generateColors = (count: number): string[] => {
     '#9A60B4',
     '#EA7CCC',
   ];
-  
+
   const colors: string[] = [];
   for (let i = 0; i < count; i++) {
     colors.push(baseColors[i % baseColors.length]);
@@ -89,15 +89,15 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
     frontColor: colors[index],
     spacing: 2,
     labelWidth: 50,
-    labelTextStyle: { 
+    labelTextStyle: {
       color: Colors.text.secondary,
       fontSize: 10,
       fontFamily: 'System',
       fontWeight: '400' as const,
     },
     labelComponent: () => (
-      <View style={{ transform: [{ rotate: '30deg' }], width: 100, marginLeft: -8, marginTop: 33 }}>
-        <Text style={{ color: Colors.text.secondary, fontSize: 10, textAlign: 'left' }}>
+      <View style={{ transform: [{ rotate: '30deg' }], width: 100, marginLeft: -15, marginTop: 38 }}>
+        <Text style={{ color: Colors.text.secondary, fontSize: 10, textAlign: 'center' }}>
           {String(item[categoryField])}
         </Text>
       </View>
@@ -107,10 +107,10 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
 
   // Calculate max value for proper scaling
   const maxValue = Math.max(...data.map((item) => item[valueField] as number), 0);
-  
+
   // Ensure we have at least 1 as maxValue to avoid division by zero
   const displayMaxValue = Math.max(1, Math.ceil(maxValue * 1.1));
-  
+
   // To avoid repeating numbers (like 0, 0, 1, 1), we should ensure noOfSections 
   // results in integer increments. If maxValue is small, we use maxValue as sections.
   const noOfSections = displayMaxValue <= 5 ? displayMaxValue : 5;
@@ -127,7 +127,7 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
         hideRules
         xAxisThickness={0.5}
         yAxisThickness={0.5}
-        yAxisTextStyle={{ 
+        yAxisTextStyle={{
           color: Colors.text.secondary,
           fontSize: 10,
         }}
@@ -141,6 +141,7 @@ export function AmChartsColumnChart<T extends Record<string, any>>(
         rotateLabel
         xAxisTextNumberOfLines={1}
         labelsExtraHeight={100}
+        xAxisLabelsHeight={50}
         noOfSections={noOfSections}
         maxValue={roundedMaxValue}
         stepValue={roundedMaxValue / noOfSections}
