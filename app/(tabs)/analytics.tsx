@@ -32,13 +32,10 @@ type MetricsJsonResponse = {
   };
 };
 
-const METRICS_API_URL = 'https://hospital-feedback-api.onrender.com/api/metrics-json';
 
 export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<FeedbackCountItem[]>([]);
-  const [metricsLoading, setMetricsLoading] = useState(true);
-  const [metrics, setMetrics] = useState<MetricsJsonResponse | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -56,51 +53,6 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
     load();
   }, []);
 
-  useEffect(() => {
-    const loadMetricsWithRetry = async (retries = 3) => {
-      setMetricsLoading(true);
-      for (let i = 0; i < retries; i++) {
-        try {
-          console.log(`Fetching metrics from ${METRICS_API_URL} (Attempt ${i + 1})...`);
-          
-          // Use a long timeout controller since the API is slow (Render free tier cold starts)
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
-
-          const res = await fetch(METRICS_API_URL, {
-            signal: controller.signal,
-            headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-            }
-          });
-          
-          clearTimeout(timeoutId);
-          
-          console.log('Metrics API response status:', res.status);
-          if (!res.ok) throw new Error(`Attempt ${i + 1} failed with status ${res.status}`);
-          
-          const json = (await res.json()) as MetricsJsonResponse;
-          setMetrics(json);
-          setMetricsLoading(false);
-          return; // Success
-        } catch (e: any) {
-          console.error(`Metrics fetch error (Attempt ${i + 1}):`, e.name === 'AbortError' ? 'Timeout' : e.message);
-          
-          if (i === retries - 1) {
-            setMetrics(null);
-            setMetricsLoading(false);
-          } else {
-            // Wait 2 seconds before retrying to give the server more time to wake up
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-        }
-      }
-    };
-
-    loadMetricsWithRetry();
-  }, []);
 
   // Helper to parse dates for sorting
   const parseDate = (dateStr: string) => {
@@ -184,42 +136,6 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
     { category: 'Positive', value: positive },
     { category: 'Negative', value: negative }
   ]), [positive, negative]);
-  const modelSentimentSplitData = useMemo(() => {
-    if (!metrics?.sentiment?.classification_report) return [];
-    return [
-      { category: 'Negative', value: metrics.sentiment.classification_report.negative?.support || 0 },
-      { category: 'Positive', value: metrics.sentiment.classification_report.positive?.support || 0 },
-    ];
-  }, [metrics]);
-
-  const modelConfusionMatrix = useMemo(() => metrics?.sentiment?.confusion_matrix || null, [metrics]);
-
-  const departmentConfusionMatrices = useMemo(() => {
-    const cms = metrics?.field_importance?.confusion_matrices;
-    const perField = metrics?.field_importance?.per_field || [];
-    if (!cms) return [];
-    return Object.entries(cms).map(([field, matrix]) => {
-      const fieldStats = perField.find(f => f.field === field);
-      return {
-        field,
-        matrix,
-        accuracy: fieldStats?.accuracy || 0,
-        f1: fieldStats?.f1 || 0,
-      };
-    });
-  }, [metrics]);
-
-  // if (loading) {
-  //   return (
-  //     <View style={embedded ? styles.embeddedContainer : styles.container}>
-  //       {!embedded && <Header title="Analytics" />}
-  //       <View style={styles.centered}>
-  //         <ActivityIndicator size="large" color={Colors.primary} />
-  //         <Text style={styles.loadingText}>Loading analytics...</Text>
-  //       </View>
-  //     </View>
-  //   );
-  // }
 
   return (
     <View style={embedded ? styles.embeddedContainer : styles.container}>
@@ -297,137 +213,7 @@ export function AnalyticsContent({ embedded = false }: { embedded?: boolean }) {
           </View>
         </View>
 
-        {/* Model Metrics (separate API) */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Prediction Model Metrics</Text>
-          <Text style={styles.cardSubtitle}>Maternity Feedback Prediction - Metrics</Text>
-          {metricsLoading ? (
-            <View style={styles.chartCenter}>
-              <ActivityIndicator size="small" color={Colors.primary} />
-            </View>
-          ) : metrics ? (
-            <>
-              <View style={styles.chartCenter}>
-                <AmChartsPie3DChart
-                  data={modelSentimentSplitData}
-                  categoryField="category"
-                  valueField="value"
-                  height={260}
-                />
-              </View>
-              {modelConfusionMatrix ? (
-                <View style={styles.chartCenter}>
-                  <View style={styles.heatmapContainer}>
-                    <Text style={styles.heatmapMainTitle}>Sentiment Model - Confusion Matrix</Text>
-                    <Text style={styles.heatmapSubtitle}>
-                      Acc: {(metrics?.sentiment?.accuracy || 0).toFixed(3)} | F1: {(metrics?.sentiment?.f1 || 0).toFixed(3)}
-                    </Text>
-                    
-                    <View style={styles.heatmapBody}>
-                      {/* Y-axis label */}
-                      <View style={styles.yAxisLabelContainer}>
-                        <Text style={styles.yAxisLabel}>Actual</Text>
-                      </View>
-
-                      <View style={styles.heatmapContent}>
-                        {/* Matrix Rows */}
-                        <View style={styles.heatmapRow}>
-                          <Text style={styles.rowLabel}>Negative</Text>
-                          <View style={[styles.heatmapCell, { backgroundColor: modelConfusionMatrix[0][0] > 0 ? '#08306b' : '#f7fbff' }]}>
-                            <Text style={[styles.heatmapValue, { color: modelConfusionMatrix[0][0] > 1000 ? 'white' : 'black' }]}>{modelConfusionMatrix[0][0]}</Text>
-                          </View>
-                          <View style={[styles.heatmapCell, { backgroundColor: modelConfusionMatrix[0][1] > 0 ? '#08306b' : '#f7fbff' }]}>
-                            <Text style={[styles.heatmapValue, { color: modelConfusionMatrix[0][1] > 1000 ? 'white' : 'black' }]}>{modelConfusionMatrix[0][1]}</Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.heatmapRow}>
-                          <Text style={styles.rowLabel}>Positive</Text>
-                          <View style={[styles.heatmapCell, { backgroundColor: modelConfusionMatrix[1][0] > 0 ? '#deebf7' : '#f7fbff' }]}>
-                            <Text style={[styles.heatmapValue, { color: 'black' }]}>{modelConfusionMatrix[1][0]}</Text>
-                          </View>
-                          <View style={[styles.heatmapCell, { backgroundColor: modelConfusionMatrix[1][1] > 0 ? '#deebf7' : '#f7fbff' }]}>
-                            <Text style={[styles.heatmapValue, { color: 'black' }]}>{modelConfusionMatrix[1][1]}</Text>
-                          </View>
-                        </View>
-
-                        {/* X-axis labels */}
-                        <View style={styles.xAxisLabels}>
-                          <View style={styles.xAxisLabelBox}><Text style={styles.xAxisText}>Negative</Text></View>
-                          <View style={styles.xAxisLabelBox}><Text style={styles.xAxisText}>Positive</Text></View>
-                        </View>
-                        
-                        <Text style={styles.xAxisTitle}>Predicted</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.chartCenter}>
-                  <Text style={styles.cardSubtitle}>Confusion matrix unavailable</Text>
-                </View>
-              )}
-
-              {/* Department-wise Confusion Matrices */}
-              {departmentConfusionMatrices.length > 0 && (
-                <View style={styles.departmentSection}>
-                  <Text style={styles.sectionTitle}>Department-wise Performance</Text>
-                  {departmentConfusionMatrices.map(({ field, matrix, accuracy, f1 }) => (
-                    <View key={field} style={styles.departmentConfusionBox}>
-                      <View style={styles.heatmapContainer}>
-                        <Text style={styles.heatmapMainTitle}>
-                          {field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                        </Text>
-                        <Text style={styles.heatmapSubtitle}>
-                          Acc: {accuracy.toFixed(3)} | F1: {f1.toFixed(3)}
-                        </Text>
-                        
-                        <View style={styles.heatmapBody}>
-                          <View style={styles.yAxisLabelContainer}>
-                            <Text style={styles.yAxisLabel}>Actual</Text>
-                          </View>
-
-                          <View style={styles.heatmapContent}>
-                            <View style={styles.heatmapRow}>
-                              <Text style={styles.rowLabel}>Negative</Text>
-                              <View style={[styles.heatmapCell, { backgroundColor: matrix[0][0] > 0 ? '#08306b' : '#f7fbff' }]}>
-                                <Text style={[styles.heatmapValue, { color: matrix[0][0] > 1000 ? 'white' : 'black' }]}>{matrix[0][0]}</Text>
-                              </View>
-                              <View style={[styles.heatmapCell, { backgroundColor: matrix[0][1] > 0 ? '#08306b' : '#f7fbff' }]}>
-                                <Text style={[styles.heatmapValue, { color: matrix[0][1] > 1000 ? 'white' : 'black' }]}>{matrix[0][1]}</Text>
-                              </View>
-                            </View>
-
-                            <View style={styles.heatmapRow}>
-                              <Text style={styles.rowLabel}>Positive</Text>
-                              <View style={[styles.heatmapCell, { backgroundColor: matrix[1][0] > 0 ? '#deebf7' : '#f7fbff' }]}>
-                                <Text style={[styles.heatmapValue, { color: 'black' }]}>{matrix[1][0]}</Text>
-                              </View>
-                              <View style={[styles.heatmapCell, { backgroundColor: matrix[1][1] > 0 ? '#deebf7' : '#f7fbff' }]}>
-                                <Text style={[styles.heatmapValue, { color: 'black' }]}>{matrix[1][1]}</Text>
-                              </View>
-                            </View>
-
-                            <View style={styles.xAxisLabels}>
-                              <View style={styles.xAxisLabelBox}><Text style={styles.xAxisText}>Negative</Text></View>
-                              <View style={styles.xAxisLabelBox}><Text style={styles.xAxisText}>Positive</Text></View>
-                            </View>
-                            
-                            <Text style={styles.xAxisTitle}>Predicted</Text>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </>
-          ) : (
-            <View style={styles.chartCenter}>
-              <Text style={styles.cardSubtitle}>Unable to load metrics</Text>
-            </View>
-          )}
-        </View>
+       
       </ScrollView>
     </View>
   );
